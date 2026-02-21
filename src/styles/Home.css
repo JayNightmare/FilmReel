@@ -1,0 +1,211 @@
+/* Home Page Styles */
+.home-container {
+    display: flex;
+    flex-direction: column;
+    gap: 48px;
+}
+
+/* Hero Section */
+.hero-section {
+    position: relative;
+    width: 100%;
+    border-radius: 24px;
+    overflow: hidden;
+    min-height: 500px;
+    display: flex;
+    align-items: flex-end;
+    padding: 48px 32px;
+}
+
+.hero-bg-container {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+}
+
+.hero-bg-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.7s ease;
+}
+
+.hero-overlay-bottom {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, var(--bg-dark), rgba(15, 8, 20, 0.8), transparent);
+}
+
+.hero-overlay-side {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to right, rgba(15, 8, 20, 0.9), transparent, transparent);
+}
+
+/* Hero Content */
+.hero-content {
+    position: relative;
+    z-index: 10;
+    max-width: 672px;
+}
+
+.hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 12px;
+    border-radius: 9999px;
+    background: rgba(127, 19, 236, 0.2);
+    border: 1px solid rgba(127, 19, 236, 0.3);
+    backdrop-filter: blur(12px);
+    margin-bottom: 24px;
+}
+
+.hero-badge-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent-purple);
+}
+
+.hero-badge-text {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--accent-purple);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.hero-title {
+    font-size: clamp(2.5rem, 5vw, 3.75rem);
+    font-weight: 900;
+    color: white;
+    line-height: 1.1;
+    margin-bottom: 16px;
+    letter-spacing: -1px;
+}
+
+.hero-description {
+    font-size: 1.125rem;
+    color: var(--text-secondary);
+    margin-bottom: 32px;
+    max-width: 512px;
+    line-height: 1.6;
+}
+
+.hero-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.hero-button {
+    padding: 14px 24px;
+    font-size: 1.1rem;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.hero-button-primary {
+    padding: 14px 32px;
+}
+
+/* Category Sections */
+.category-section {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding-top: 16px;
+}
+
+.category-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 4px;
+}
+
+.category-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: white;
+}
+
+.category-link {
+    font-size: 0.875rem;
+    color: var(--accent-purple);
+    transition: color 0.2s;
+    text-decoration: none;
+}
+
+.category-link:hover {
+    color: white;
+}
+
+/* Scroll Container */
+.carousel-container {
+    display: flex;
+    gap: 16px;
+    overflow-x: auto;
+    padding-bottom: 16px;
+    scroll-snap-type: x mandatory;
+    /* FIX: Add top padding and negative top margin so hover states don't clip horizontally */
+    padding-top: 16px;
+    margin-top: -16px;
+}
+
+.carousel-container::-webkit-scrollbar {
+    height: 8px;
+}
+
+.carousel-container::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.carousel-container::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+}
+
+.carousel-container::-webkit-scrollbar-thumb:hover {
+    background: var(--accent-purple);
+}
+
+/* Floating Action Button */
+.fab-button {
+    position: fixed;
+    bottom: 32px;
+    right: 32px;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: rgba(127, 19, 236, 0.24);
+    border: none;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 20px rgba(127, 19, 236, 0.3);
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    z-index: 100;
+    backdrop-filter: blur(8px);
+}
+
+.fab-button:hover {
+    background: var(--accent-purple);
+    transform: scale(1.1);
+    box-shadow: 0 0 30px rgba(127, 19, 236, 0.6);
+}
+
+.fab-icon {
+    font-size: 32px;
+    transition: transform 0.5s;
+}
+
+.fab-button:hover .fab-icon {
+    transform: rotate(180deg);
+}

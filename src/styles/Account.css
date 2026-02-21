@@ -1,0 +1,178 @@
+/* Account Page Styles */
+.account-page {
+    max-width: 1100px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 40px;
+}
+
+.account-top {
+    display: flex;
+    gap: 40px;
+}
+
+@media (max-width: 768px) {
+    .account-top {
+        flex-direction: column;
+    }
+
+    .account-sidebar {
+        width: 100% !important;
+    }
+}
+
+.account-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.account-title {
+    font-size: 2.5rem;
+    font-weight: 800;
+}
+
+.account-form {
+    padding: 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.account-avatar-row {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    margin-bottom: 16px;
+}
+
+.account-avatar {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1);
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.account-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.account-avatar-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+.account-avatar-overlay:hover {
+    opacity: 1;
+}
+
+.account-sidebar {
+    width: 350px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.account-sidebar-title {
+    font-size: 1.5rem;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 700;
+}
+
+.account-mood-card {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.account-mood-label {
+    font-weight: 600;
+    font-size: 1.1rem;
+    color: var(--accent-purple-light);
+}
+
+.account-mood-date {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+/* --- Watchlist Section --- */
+.account-watchlist {
+    width: 100%;
+}
+
+.account-watchlist-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+}
+
+.account-watchlist-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 16px;
+}
+
+.account-watchlist-empty {
+    text-align: center;
+    padding: 48px 20px;
+    color: var(--text-secondary);
+}
+
+.account-watchlist-empty .material-symbols-outlined {
+    font-size: 48px;
+    display: block;
+    margin-bottom: 12px;
+    color: rgba(127, 19, 236, 0.4);
+}
+
+/* --- Toast --- */
+.toast {
+    position: fixed;
+    bottom: 32px;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    padding: 14px 28px;
+    border-radius: 12px;
+    background: rgba(127, 19, 236, 0.9);
+    backdrop-filter: blur(12px);
+    color: white;
+    font-weight: 600;
+    font-size: 0.95rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    z-index: 9999;
+    opacity: 0;
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    pointer-events: none;
+    box-shadow: 0 8px 32px rgba(127, 19, 236, 0.4);
+}
+
+.toast.visible {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+}

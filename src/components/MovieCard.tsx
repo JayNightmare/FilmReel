@@ -1,87 +1,74 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Play } from "lucide-react";
 import type { Movie } from "../services/api";
+import { GenreMap } from "../services/genreMap";
+import { StorageService } from "../services/storage";
+import "../styles/MovieCard.css";
+
+const FALLBACK_POSTER =
+    "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 500 750' fill='none'%3E%3Crect width='500' height='750' fill='%231a1122'/%3E%3Ctext x='250' y='340' text-anchor='middle' fill='%237f13ec' font-family='system-ui' font-size='40' font-weight='bold'%3EFilmReel%3C/text%3E%3Ctext x='250' y='400' text-anchor='middle' fill='%23666' font-family='system-ui' font-size='20'%3ENo Poster%3C/text%3E%3C/svg%3E";
 
 export const MovieCard = ({ movie }: { movie: Movie }) => {
+    const [saved, setSaved] = useState(() =>
+        StorageService.isInWatchlist(movie.id),
+    );
+
     const imageUrl = movie.poster_path
         ? `https://image.tmdb.org/t/p/w500${movie.poster_path}`
-        : "https://via.placeholder.com/500x750/333/8A2BE2?text=FilmReel";
+        : FALLBACK_POSTER;
+
+    const genreName = movie.genre_ids?.[0]
+        ? GenreMap.getName(movie.genre_ids[0])
+        : "Film";
+
+    const toggleWatchlist = (e: React.MouseEvent) => {
+        e.preventDefault(); // Don't navigate to movie page
+        e.stopPropagation();
+        if (saved) {
+            StorageService.removeFromWatchlist(movie.id);
+            setSaved(false);
+        } else {
+            StorageService.addToWatchlist({
+                id: movie.id,
+                title: movie.title,
+                poster_path: movie.poster_path,
+            });
+            setSaved(true);
+        }
+    };
 
     return (
-        <Link
-            to={`/movie/${movie.id}`}
-            className="glass-panel group relative overflow-hidden transition-all duration-300 transform hover:scale-105 hover:z-10"
-            style={{
-                display: "block",
-                width: "200px",
-                flexShrink: 0,
-                aspectRatio: "2/3",
-                borderRadius: "16px",
-                position: "relative",
-            }}
-        >
-            <img
-                src={imageUrl}
-                alt={movie.title}
-                style={{ width: "100%", height: "100%", objectFit: "cover" }}
-            />
+        <Link to={`/movie/${movie.id}`} className="movie-card group">
+            <div className="movie-card-inner">
+                <img
+                    src={imageUrl}
+                    alt={movie.title}
+                    className="movie-poster"
+                    onError={(e) => {
+                        (e.target as HTMLImageElement).src = FALLBACK_POSTER;
+                    }}
+                />
+                <div className="movie-overlay" />
 
-            {/* Hover Overlay */}
-            <div
-                className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col items-center justify-center p-4 text-center"
-                style={{
-                    position: "absolute",
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    background:
-                        "linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.4) 50%, transparent 100%)",
-                    display: "flex",
-                    flexDirection: "column",
-                    justifyContent: "flex-end",
-                    padding: "20px",
-                    opacity: 0,
-                    transition: "opacity 0.3s ease",
-                }}
-                // Using inline styles for hover state is tricky in pure React without styled-components,
-                // but we can rely on standard CSS structural pseudo-classes if we added them.
-                onMouseEnter={(e) => (e.currentTarget.style.opacity = "1")}
-                onMouseLeave={(e) => (e.currentTarget.style.opacity = "0")}
-            >
-                <div
-                    style={{
-                        background: "var(--accent-purple)",
-                        borderRadius: "50%",
-                        width: "48px",
-                        height: "48px",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        marginBottom: "10px",
-                        boxShadow: "0 4px 15px var(--accent-purple-glow)",
-                    }}
+                <button
+                    className={`movie-bookmark ${saved ? "active" : ""}`}
+                    onClick={toggleWatchlist}
+                    title={saved ? "Remove from Watchlist" : "Add to Watchlist"}
                 >
-                    <Play fill="white" size={24} />
+                    <span className="material-symbols-outlined">
+                        {saved ? "bookmark_added" : "bookmark_add"}
+                    </span>
+                </button>
+
+                <div className="movie-info">
+                    <h4 className="movie-title truncate">{movie.title}</h4>
+                    <p className="movie-year">
+                        {genreName} •{" "}
+                        {movie.release_date
+                            ? new Date(movie.release_date).getFullYear()
+                            : "Unknown Year"}
+                    </p>
                 </div>
-                <h3
-                    style={{
-                        fontSize: "1rem",
-                        fontWeight: 700,
-                        margin: "0 0 5px 0",
-                    }}
-                >
-                    {movie.title}
-                </h3>
-                <span
-                    style={{
-                        fontSize: "0.8rem",
-                        color: "var(--text-secondary)",
-                    }}
-                >
-                    {new Date(movie.release_date).getFullYear()} • ★{" "}
-                    {movie.vote_average.toFixed(1)}
-                </span>
             </div>
         </Link>
     );

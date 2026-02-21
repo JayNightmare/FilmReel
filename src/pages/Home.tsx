@@ -1,24 +1,46 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { APIService } from "../services/api";
 import type { Movie, Genre } from "../services/api";
-import { MovieCard } from "../components/MovieCard";
-import { Play, TrendingUp } from "lucide-react";
-import { Link } from "react-router-dom";
+import { MovieRow } from "../components/MovieRow";
+import { GenreMap } from "../services/genreMap";
+import "../styles/Home.css";
 
 export default function Home() {
     const [popular, setPopular] = useState<Movie[]>([]);
     const [genres, setGenres] = useState<Genre[]>([]);
+    const [genreMovies, setGenreMovies] = useState<Record<number, Movie[]>>({});
     const [loading, setLoading] = useState(true);
+
+    // Vertical infinite scroll state
+    const [displayedGenreCount, setDisplayedGenreCount] = useState(3);
+    const [loadingMoreGenres, setLoadingMoreGenres] = useState(false);
+
+    const navigate = useNavigate();
 
     useEffect(() => {
         const fetchData = async () => {
             try {
                 const [popMovies, genreList] = await Promise.all([
-                    APIService.getPopularMovies(),
+                    APIService.getPopularMovies(1),
                     APIService.getGenres(),
                 ]);
+
                 setPopular(popMovies);
                 setGenres(genreList);
+                GenreMap.seed(genreList);
+
+                // Fetch movies for the first 3 genres
+                const top3 = genreList.slice(0, 3);
+                const moviesForGenres = await Promise.all(
+                    top3.map((g) => APIService.getMoviesByGenre(g.id, 1)),
+                );
+
+                const newGenreMovies: Record<number, Movie[]> = {};
+                top3.forEach((g, idx) => {
+                    newGenreMovies[g.id] = moviesForGenres[idx];
+                });
+                setGenreMovies(newGenreMovies);
             } catch (e) {
                 console.error("Failed to load dashboard data.", e);
             } finally {
@@ -28,6 +50,56 @@ export default function Home() {
         fetchData();
     }, []);
 
+    // Observer for detecting end of page to load more genres
+    const observer = useRef<IntersectionObserver | null>(null);
+    const lastGenreElementRef = useCallback(
+        (node: HTMLElement | null) => {
+            if (loading || loadingMoreGenres) return;
+            if (observer.current) observer.current.disconnect();
+
+            observer.current = new IntersectionObserver(
+                (entries) => {
+                    if (
+                        entries[0].isIntersecting &&
+                        displayedGenreCount < genres.length
+                    ) {
+                        loadMoreGenres();
+                    }
+                },
+                { rootMargin: "0px 0px 400px 0px" },
+            );
+
+            if (node) observer.current.observe(node);
+        },
+        [loading, loadingMoreGenres, displayedGenreCount, genres.length],
+    );
+
+    const loadMoreGenres = async () => {
+        if (loadingMoreGenres || displayedGenreCount >= genres.length) return;
+        setLoadingMoreGenres(true);
+
+        try {
+            const nextCount = Math.min(displayedGenreCount + 2, genres.length);
+            const nextGenres = genres.slice(displayedGenreCount, nextCount);
+
+            const moviesForNextGenres = await Promise.all(
+                nextGenres.map((g) => APIService.getMoviesByGenre(g.id, 1)),
+            );
+
+            const newGenreMovies = { ...genreMovies };
+            nextGenres.forEach((g, idx) => {
+                newGenreMovies[g.id] = moviesForNextGenres[idx];
+            });
+
+            setGenreMovies(newGenreMovies);
+            setDisplayedGenreCount(nextCount);
+        } catch (e) {
+            console.error("Failed to load more genres.", e);
+        } finally {
+            setLoadingMoreGenres(false);
+        }
+    };
+
     if (loading) {
         return (
             <div
@@ -35,18 +107,29 @@ export default function Home() {
                     display: "flex",
                     justifyContent: "center",
                     alignItems: "center",
-                    height: "100%",
+                    flex: 1,
+                    minHeight: "50vh",
                 }}
             >
                 <div
                     className="glass-panel"
-                    style={{ padding: "20px", borderRadius: "50%" }}
+                    style={{
+                        padding: "24px",
+                        borderRadius: "50%",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                    }}
                 >
-                    <Play
-                        className="animate-pulse"
-                        color="var(--accent-purple)"
-                        size={32}
-                    />
+                    <span
+                        className="material-symbols-outlined animate-pulse"
+                        style={{
+                            fontSize: "40px",
+                            color: "var(--accent-purple)",
+                        }}
+                    >
+                        autorenew
+                    </span>
                 </div>
             </div>
         );
@@ -55,159 +138,134 @@ export default function Home() {
     const featured = popular[0];
 
     return (
-        <div
-            style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: "40px",
-                paddingBottom: "60px",
-            }}
-        >
-            {/* Featured Header */}
+        <div className="home-container">
+            {/* Hero Section */}
             {featured && (
-                <section
-                    className="glass-panel"
-                    style={{
-                        position: "relative",
-                        height: "400px",
-                        borderRadius: "24px",
-                        overflow: "hidden",
-                        display: "flex",
-                        alignItems: "flex-end",
-                        padding: "40px",
-                    }}
-                >
-                    {featured.backdrop_path && (
+                <section className="hero-section group">
+                    {/* Hero Background Image */}
+                    <div className="hero-bg-container">
                         <img
-                            title="Backdrop"
-                            src={`https://image.tmdb.org/t/p/original${featured.backdrop_path}`}
-                            style={{
-                                position: "absolute",
-                                inset: 0,
-                                width: "100%",
-                                height: "100%",
-                                objectFit: "cover",
-                                zIndex: 0,
-                                opacity: 0.5,
+                            src={
+                                featured.backdrop_path
+                                    ? `https://image.tmdb.org/t/p/original${featured.backdrop_path}`
+                                    : `https://image.tmdb.org/t/p/original${featured.poster_path || ""}`
+                            }
+                            onError={(e) => {
+                                (e.target as HTMLImageElement).src =
+                                    "https://via.placeholder.com/1400x800/1a1122/7f13ec";
                             }}
+                            alt={featured.title}
+                            className="hero-bg-image group-hover-scale-110"
                         />
-                    )}
-                    <div
-                        style={{
-                            position: "absolute",
-                            inset: 0,
-                            background:
-                                "linear-gradient(to top, var(--bg-dark), transparent)",
-                            zIndex: 1,
-                        }}
-                    />
+                        <div className="hero-overlay-bottom" />
+                        <div className="hero-overlay-side" />
+                    </div>
 
-                    <div
-                        style={{
-                            position: "relative",
-                            zIndex: 2,
-                            maxWidth: "600px",
-                        }}
-                    >
-                        <div
-                            style={{
-                                display: "inline-block",
-                                background: "rgba(138,43,226,0.3)",
-                                padding: "4px 12px",
-                                borderRadius: "100px",
-                                fontSize: "0.8rem",
-                                fontWeight: 600,
-                                color: "var(--accent-purple-light)",
-                                marginBottom: "12px",
-                            }}
-                        >
-                            Trending Now
+                    {/* Hero Content */}
+                    <div className="hero-content animate-fade-in-up">
+                        <div className="hero-badge">
+                            <span className="hero-badge-dot animate-pulse"></span>
+                            <span className="hero-badge-text">AI Powered</span>
                         </div>
-                        <h1
-                            style={{
-                                fontSize: "3rem",
-                                marginBottom: "12px",
-                                textShadow: "0 2px 10px rgba(0,0,0,0.5)",
-                            }}
-                        >
-                            {featured.title}
-                        </h1>
+
+                        <h2 className="hero-title">
+                            What's the{" "}
+                            <span className="text-gradient">vibe</span> tonight?
+                        </h2>
+
                         <p
+                            className="hero-description truncate"
                             style={{
-                                color: "var(--text-secondary)",
-                                marginBottom: "24px",
-                                lineHeight: 1.6,
-                                display: "-webkit-box",
                                 WebkitLineClamp: 3,
+                                display: "-webkit-box",
                                 WebkitBoxOrient: "vertical",
-                                overflow: "hidden",
+                                whiteSpace: "normal",
                             }}
                         >
-                            {featured.overview}
+                            {featured.overview ||
+                                "Stop scrolling, start watching. Let our AI curate a personalized playlist based on exactly how you're feeling right now."}
                         </p>
-                        <div style={{ display: "flex", gap: "16px" }}>
-                            <Link
-                                to={`/movie/${featured.id}`}
-                                className="btn btn-primary"
+
+                        <div className="hero-buttons">
+                            <button
+                                onClick={() => navigate("/mood")}
+                                className="btn-primary hero-button hero-button-primary"
                             >
-                                <Play fill="white" size={20} /> Watch Now
-                            </Link>
+                                <span className="material-symbols-outlined">
+                                    auto_awesome
+                                </span>
+                                Take Mood Survey
+                            </button>
+                            <button
+                                onClick={() =>
+                                    navigate(`/movie/${featured.id}`)
+                                }
+                                className="btn-glass hero-button"
+                            >
+                                <span className="material-symbols-outlined">
+                                    play_arrow
+                                </span>
+                                Watch Now
+                            </button>
                         </div>
                     </div>
                 </section>
             )}
 
-            {/* Row: Popular Movies */}
-            <section>
-                <div
-                    style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "10px",
-                        marginBottom: "20px",
-                    }}
-                >
-                    <TrendingUp color="var(--accent-purple)" size={24} />
-                    <h2 style={{ fontSize: "1.5rem" }}>Popular Release</h2>
-                </div>
-                <div
-                    style={{
-                        display: "flex",
-                        gap: "20px",
-                        overflowX: "auto",
-                        paddingBottom: "20px",
-                        scrollSnapType: "x mandatory",
-                    }}
-                >
-                    {popular.slice(1).map((movie) => (
-                        <MovieCard key={`pop-${movie.id}`} movie={movie} />
-                    ))}
-                </div>
-            </section>
+            {/* Trending Now */}
+            <MovieRow
+                title="Trending Now"
+                isTrending={true}
+                initialMovies={popular.slice(1)}
+            />
 
-            {/* (Mock) Row for each Genre... */}
-            {genres.slice(0, 3).map((genre) => (
-                <section key={genre.id}>
-                    <h2 style={{ fontSize: "1.5rem", marginBottom: "20px" }}>
-                        {genre.name}
-                    </h2>
+            {/* Genre Rows */}
+            {genres.slice(0, displayedGenreCount).map((genre, index) => {
+                const isLast = index === displayedGenreCount - 1;
+                return (
                     <div
+                        key={genre.id}
+                        ref={isLast ? lastGenreElementRef : null}
+                    >
+                        <MovieRow
+                            title={`${genre.name} Hits`}
+                            genre={genre}
+                            initialMovies={genreMovies[genre.id] || []}
+                        />
+                    </div>
+                );
+            })}
+
+            {loadingMoreGenres && (
+                <div
+                    style={{
+                        display: "flex",
+                        justifyContent: "center",
+                        padding: "24px 0",
+                    }}
+                >
+                    <span
+                        className="material-symbols-outlined animate-pulse"
                         style={{
-                            display: "flex",
-                            gap: "20px",
-                            overflowX: "auto",
-                            paddingBottom: "20px",
+                            fontSize: "32px",
+                            color: "var(--accent-purple)",
                         }}
                     >
-                        {popular.map((movie) => (
-                            <MovieCard
-                                key={`g${genre.id}-${movie.id}`}
-                                movie={{ ...movie, id: movie.id + genre.id }}
-                            />
-                        ))}
-                    </div>
-                </section>
-            ))}
+                        autorenew
+                    </span>
+                </div>
+            )}
+
+            {/* Floating Action Button */}
+            <button
+                onClick={() => navigate("/mood")}
+                className="fab-button group"
+                title="Mood Shuffle"
+            >
+                <span className="material-symbols-outlined fab-icon">
+                    auto_awesome
+                </span>
+            </button>
         </div>
     );
 }

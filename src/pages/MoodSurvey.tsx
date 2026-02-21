@@ -3,7 +3,6 @@ import { StorageService } from "../services/storage";
 import { APIService } from "../services/api";
 import type { Movie } from "../services/api";
 import { MovieCard } from "../components/MovieCard";
-import { Sparkles, ArrowRight, RefreshCw } from "lucide-react";
 
 // Weighted answers mapping to TMDB Action(28), Comedy(35), Drama(18), Sci-Fi(878), Horror(27), Romance(10749)
 const QUESTIONS = [
@@ -165,7 +164,12 @@ export default function MoodSurvey() {
                             boxShadow: "0 0 30px var(--accent-purple-glow)",
                         }}
                     >
-                        <Sparkles size={40} fill="white" />
+                        <span
+                            className="material-symbols-outlined"
+                            style={{ fontSize: "40px", color: "white" }}
+                        >
+                            auto_awesome
+                        </span>
                     </div>
                     <h1 style={{ fontSize: "2.5rem", marginBottom: "16px" }}>
                         Your Vibe is{" "}
@@ -184,7 +188,13 @@ export default function MoodSurvey() {
                         current mood. Grab your snacks!
                     </p>
                     <button onClick={reset} className="btn btn-glass">
-                        <RefreshCw size={18} /> Take Survey Again
+                        <span
+                            className="material-symbols-outlined"
+                            style={{ fontSize: "18px" }}
+                        >
+                            autorenew
+                        </span>{" "}
+                        Take Survey Again
                     </button>
                 </div>
 
@@ -331,10 +341,15 @@ export default function MoodSurvey() {
                             }}
                         >
                             {opt.text}
-                            <ArrowRight
-                                size={20}
-                                color="var(--accent-purple-light)"
-                            />
+                            <span
+                                className="material-symbols-outlined"
+                                style={{
+                                    fontSize: "20px",
+                                    color: "var(--accent-purple-light)",
+                                }}
+                            >
+                                arrow_forward
+                            </span>
                         </button>
                     ))}
                 </div>

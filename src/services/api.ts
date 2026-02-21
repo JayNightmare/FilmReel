@@ -1,8 +1,5 @@
-import dotenv from "dotenv";
-dotenv.config();
-
 // Using a placeholder constant. In production, this would be an environment variable (import.meta.env.VITE_TMDB_API_KEY)
-const TMDB_API_KEY = process.env.TMDB_API_KEY;
+const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY;
 const BASE_URL = "https://api.themoviedb.org/3";
 
 export interface Movie {
@@ -26,7 +23,11 @@ const fetchTMDB = async <T>(
     endpoint: string,
     params: Record<string, string> = {},
 ): Promise<T> => {
-    if (!TMDB_API_KEY || TMDB_API_KEY === "PLACEHOLDER_KEY") {
+    if (
+        !TMDB_API_KEY ||
+        TMDB_API_KEY.trim() === "" ||
+        TMDB_API_KEY === "PLACEHOLDER_KEY"
+    ) {
         console.warn("TMDB API Key missing. Returning mock data.");
         return getMockData(endpoint) as T;
     }
@@ -52,16 +53,22 @@ export const APIService = {
     },
 
     // Get popular movies for the home dashboard
-    getPopularMovies: async (): Promise<Movie[]> => {
-        const data = await fetchTMDB<{ results: Movie[] }>("/movie/popular");
+    getPopularMovies: async (page: number = 1): Promise<Movie[]> => {
+        const data = await fetchTMDB<{ results: Movie[] }>("/movie/popular", {
+            page: page.toString(),
+        });
         return data.results;
     },
 
     // Get movies for a specific genre ID (used by Mood survey results)
-    getMoviesByGenre: async (genreId: number): Promise<Movie[]> => {
+    getMoviesByGenre: async (
+        genreId: number,
+        page: number = 1,
+    ): Promise<Movie[]> => {
         const data = await fetchTMDB<{ results: Movie[] }>("/discover/movie", {
             with_genres: genreId.toString(),
             sort_by: "popularity.desc",
+            page: page.toString(),
         });
         return data.results;
     },
@@ -69,6 +76,23 @@ export const APIService = {
     // Get specific movie details
     getMovieDetails: async (movieId: number): Promise<Movie> => {
         return await fetchTMDB<Movie>(`/movie/${movieId}`);
+    },
+
+    // Search movies by query string
+    searchMovies: async (query: string, page: number = 1): Promise<Movie[]> => {
+        const data = await fetchTMDB<{ results: Movie[] }>("/search/movie", {
+            query,
+            page: page.toString(),
+        });
+        return data.results;
+    },
+
+    // Get similar movies for a given movie ID
+    getSimilarMovies: async (movieId: number): Promise<Movie[]> => {
+        const data = await fetchTMDB<{ results: Movie[] }>(
+            `/movie/${movieId}/similar`,
+        );
+        return data.results;
     },
 };
 
@@ -101,13 +125,43 @@ const getMockData = (endpoint: string): unknown => {
         endpoint.includes("/movie/popular") ||
         endpoint.includes("/discover/movie")
     ) {
+        // Extract page from endpoint/mock pseudo logic if needed, but since it's mock, just generate continuous random IDs
+        // Or assume page is passed via queryParams in real fetchTMDB. The mock data generator doesn't easily see params here unless passed.
+        // We'll just generate random IDs to simulate new pages of mock data.
+        const mockRandomizerOffset = Math.floor(Math.random() * 1000000);
         return {
             results: Array(10)
                 .fill(null)
                 .map((_, i) => ({
                     ...mockMovie,
-                    id: mockMovie.id + i,
-                    title: `Mock Movie ${i + 1}`,
+                    id: mockRandomizerOffset + i,
+                    title: `Mock Movie ${mockRandomizerOffset + i}`,
+                })),
+        };
+    }
+
+    if (endpoint.includes("/movie/") && endpoint.includes("/similar")) {
+        const mockRandomizerOffset = Math.floor(Math.random() * 1000000);
+        return {
+            results: Array(6)
+                .fill(null)
+                .map((_, i) => ({
+                    ...mockMovie,
+                    id: mockRandomizerOffset + i,
+                    title: `Related Mock ${mockRandomizerOffset + i}`,
+                })),
+        };
+    }
+
+    if (endpoint.includes("/search/movie")) {
+        const mockRandomizerOffset = Math.floor(Math.random() * 1000000);
+        return {
+            results: Array(8)
+                .fill(null)
+                .map((_, i) => ({
+                    ...mockMovie,
+                    id: mockRandomizerOffset + i,
+                    title: `Search Result ${mockRandomizerOffset + i}`,
                 })),
         };
     }
