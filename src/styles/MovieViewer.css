@@ -289,6 +289,33 @@
     font-weight: 500;
 }
 
+.pill-refresh-btn {
+    pointer-events: auto;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+    width: 26px;
+    height: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: rgba(255, 255, 255, 0.5);
+    margin-left: 6px;
+    padding: 0;
+    transition: all 0.3s ease;
+}
+
+.pill-refresh-btn:hover {
+    color: white;
+    background: rgba(255, 255, 255, 0.15);
+    transform: rotate(180deg);
+}
+
+.pill-refresh-icon {
+    font-size: 16px;
+}
+
 /* Progress bar area */
 .player-progress-wrapper {
     margin-bottom: 16px;

@@ -44,6 +44,7 @@ export default function MovieViewer() {
     const [loading, setLoading] = useState(true);
     const [inWatchlist, setInWatchlist] = useState(false);
     const [playing, setPlaying] = useState(false);
+    const [iframeKey, setIframeKey] = useState(0);
 
     // Playback state (from VidKing postMessage)
     const [currentTime, setCurrentTime] = useState(0);
@@ -53,6 +54,13 @@ export default function MovieViewer() {
 
     // Saved resume position
     const [resumeTime, setResumeTime] = useState<number | null>(null);
+
+    const refreshIframe = useCallback(() => {
+        setIframeKey((k) => k + 1);
+        setCurrentTime(0);
+        setDuration(0);
+        setIsPaused(true);
+    }, []);
 
     useEffect(() => {
         const fetchMovie = async () => {
@@ -324,8 +332,11 @@ export default function MovieViewer() {
             >
                 {/* VidKing iframe */}
                 <iframe
+                    key={iframeKey}
                     src={playing ? buildEmbedUrl() : "about:blank"}
                     title={movie.title}
+                    sandbox="allow-scripts allow-same-origin allow-forms allow-fullscreen"
+                    allow="fullscreen"
                     allowFullScreen
                 />
 
@@ -425,6 +436,15 @@ export default function MovieViewer() {
                             <span className="pill-duration">
                                 {duration > 0 ? formatTime(duration) : "--:--"}
                             </span>
+                            <button
+                                className="pill-refresh-btn"
+                                onClick={refreshIframe}
+                                title="Refresh player"
+                            >
+                                <span className="material-symbols-outlined pill-refresh-icon">
+                                    refresh
+                                </span>
+                            </button>
                         </div>
                     </div>
                 )}
