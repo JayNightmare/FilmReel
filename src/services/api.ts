@@ -11,6 +11,7 @@ export interface Movie {
     vote_average: number;
     release_date: string;
     genre_ids: number[];
+    runtime?: number;
 }
 
 export interface Genre {

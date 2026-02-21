@@ -20,6 +20,7 @@ export interface WatchlistItem {
 const PROFILE_KEY = "filmreel_user_profile";
 const MOOD_HISTORY_KEY = "filmreel_mood_history";
 const WATCHLIST_KEY = "filmreel_watchlist";
+const WATCH_PROGRESS_KEY = "filmreel_watch_progress";
 
 // Default Profile
 const defaultProfile: UserProfile = {
@@ -95,6 +96,31 @@ export const StorageService = {
         return StorageService.getWatchlist().some(
             (item) => item.id === movieId,
         );
+    },
+
+    // --- Watch Progress ---
+    saveWatchProgress: (movieId: number, currentTime: number): void => {
+        try {
+            const data = localStorage.getItem(WATCH_PROGRESS_KEY);
+            const progress: Record<string, number> = data
+                ? JSON.parse(data)
+                : {};
+            progress[String(movieId)] = Math.floor(currentTime);
+            localStorage.setItem(WATCH_PROGRESS_KEY, JSON.stringify(progress));
+        } catch {
+            /* storage full — silently fail */
+        }
+    },
+
+    getWatchProgress: (movieId: number): number | null => {
+        try {
+            const data = localStorage.getItem(WATCH_PROGRESS_KEY);
+            if (!data) return null;
+            const progress: Record<string, number> = JSON.parse(data);
+            return progress[String(movieId)] ?? null;
+        } catch {
+            return null;
+        }
     },
 
     // Helper to convert Image File -> Base64 for avatar

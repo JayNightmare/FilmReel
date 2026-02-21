@@ -1,15 +1,20 @@
-/* MovieViewer — Netflix-style Full-Screen Layout */
+/* ============================
+   Stitch UI — Immersive Player
+   ============================ */
 
-/* Full-bleed player occupies the viewport minus the navbar */
+/* --- Hero container --- */
 .viewer-hero {
     position: relative;
     width: 100vw;
     height: calc(100vh - 72px);
     margin-left: calc(-50vw + 50%);
     margin-top: -32px;
-    /* Counteract container padding */
     background: #000;
     overflow: hidden;
+}
+
+.viewer-hero.cursor-hidden {
+    cursor: none;
 }
 
 .viewer-hero iframe {
@@ -18,47 +23,452 @@
     border: none;
 }
 
-/* Gradient overlay at the bottom of the player for smooth transition */
-.viewer-hero-gradient {
+/* --- Poster Overlay (Stitch UI style) --- */
+.player-overlay {
     position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 200px;
-    background: linear-gradient(to top, var(--bg-dark), transparent);
-    pointer-events: none;
-    z-index: 2;
+    inset: 0;
+    z-index: 10;
+    cursor: pointer;
+    transition: opacity 0.6s ease, visibility 0.6s ease;
 }
 
-/* Scroll indicator */
-.viewer-scroll-hint {
+.player-overlay.hidden {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+.player-backdrop {
+    position: absolute;
+    inset: 0;
+    background-size: cover;
+    background-position: center;
+    filter: brightness(0.6);
+}
+
+/* Top + bottom gradient for legibility */
+.player-vignette {
+    position: absolute;
+    inset: 0;
+    background:
+        linear-gradient(to bottom,
+            rgba(0, 0, 0, 0.6) 0%,
+            rgba(0, 0, 0, 0) 20%,
+            rgba(0, 0, 0, 0) 60%,
+            rgba(0, 0, 0, 0.8) 100%);
+    pointer-events: none;
+}
+
+/* --- Top-left title pill --- */
+.player-title-pill {
+    position: absolute;
+    top: 24px;
+    left: 24px;
+    z-index: 15;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 20px;
+    border-radius: 9999px;
+    background: rgba(20, 15, 30, 0.5);
+    -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.player-title-pill h2 {
+    font-size: 1.1rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 300px;
+}
+
+.player-title-pill span {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.5);
+    font-weight: 500;
+}
+
+.player-title-pill-text {
+    display: flex;
+    flex-direction: column;
+}
+
+/* --- Top-right action pills --- */
+.player-top-right {
+    position: absolute;
+    top: 24px;
+    right: 24px;
+    z-index: 15;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px;
+    border-radius: 9999px;
+    background: rgba(20, 15, 30, 0.5);
+    -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.player-icon-btn {
+    background: rgba(255, 255, 255, 0.05);
+    border: none;
+    border-radius: 50%;
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.player-icon-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+    color: white;
+    transform: scale(1.05);
+}
+
+.player-icon-btn-sm {
+    width: 36px;
+    height: 36px;
+}
+
+.player-icon-sm {
+    font-size: 20px;
+}
+
+/* --- Center Play Button --- */
+.player-center-play {
+    position: absolute;
+    inset: 0;
+    z-index: 12;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+}
+
+.player-play-circle {
+    width: 96px;
+    height: 96px;
+    border-radius: 50%;
+    background: rgba(20, 15, 30, 0.5);
+    -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.player-play-circle:hover {
+    background: rgba(255, 255, 255, 0.1);
+    transform: scale(1.1);
+    box-shadow: 0 0 40px rgba(127, 19, 236, 0.4);
+}
+
+.player-play-circle .material-symbols-outlined {
+    font-size: 48px;
+    color: white;
+    margin-left: 4px;
+}
+
+.player-resume-label {
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.6);
+    font-weight: 500;
+    padding: 6px 16px;
+    border-radius: 9999px;
+    background: rgba(20, 15, 30, 0.4);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+}
+
+/* --- Bottom Floating Control Bar --- */
+.player-controls {
+    position: absolute;
+    bottom: 32px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 15;
+    width: 90%;
+    max-width: 800px;
+    padding: 20px 24px;
+    border-radius: 24px;
+    background: rgba(20, 15, 30, 0.5);
+    -webkit-backdrop-filter: blur(24px);
+    backdrop-filter: blur(24px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 0 15px rgba(127, 19, 236, 0.3);
+    transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+/* Auto-hide when idle */
+.player-controls.controls-hidden {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateX(-50%) translateY(20px);
+}
+
+/* === Live Progress Pill (read-only indicator during playback) === */
+.player-progress-pill {
     position: absolute;
     bottom: 24px;
     left: 50%;
     transform: translateX(-50%);
-    z-index: 3;
+    z-index: 20;
+    width: min(400px, 60%);
+    padding: 10px 20px 14px;
+    border-radius: 9999px;
+    background: rgba(20, 15, 30, 0.5);
+    -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    pointer-events: none;
+    -webkit-user-select: none;
+    user-select: none;
+    transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+.player-progress-pill.controls-hidden {
+    opacity: 0;
+    transform: translateX(-50%) translateY(12px);
+}
+
+.pill-track {
+    width: 100%;
+    height: 3px;
+    background: rgba(255, 255, 255, 0.12);
+    border-radius: 9999px;
+    overflow: hidden;
+    margin-bottom: 8px;
+}
+
+.pill-fill {
+    height: 100%;
+    background: var(--accent-purple);
+    border-radius: 9999px;
+    box-shadow: 0 0 8px rgba(127, 19, 236, 0.6);
+    transition: width 0.3s linear;
+}
+
+.pill-time {
     display: flex;
-    flex-direction: column;
     align-items: center;
+    justify-content: center;
     gap: 6px;
-    color: rgba(255, 255, 255, 0.5);
     font-size: 0.8rem;
-    animation: bounce 2s ease-in-out infinite;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.7);
+    letter-spacing: 0.03em;
 }
 
-@keyframes bounce {
-
-    0%,
-    100% {
-        transform: translateX(-50%) translateY(0);
-    }
-
-    50% {
-        transform: translateX(-50%) translateY(-8px);
-    }
+.pill-icon {
+    font-size: 18px;
+    color: var(--accent-purple-light);
+    font-variation-settings: 'FILL' 1;
 }
 
-/* Info section below the player */
+.pill-separator {
+    color: rgba(255, 255, 255, 0.25);
+    font-weight: 400;
+}
+
+.pill-duration {
+    color: rgba(255, 255, 255, 0.4);
+    font-weight: 500;
+}
+
+/* Progress bar area */
+.player-progress-wrapper {
+    margin-bottom: 16px;
+    padding: 0 4px;
+}
+
+.player-progress-track {
+    position: relative;
+    width: 100%;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 9999px;
+    cursor: pointer;
+    overflow: visible;
+}
+
+.player-progress-fill {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    background: var(--accent-purple);
+    border-radius: 9999px;
+    box-shadow: 0 0 10px rgba(127, 19, 236, 0.8);
+    transition: width 0.3s linear;
+}
+
+.player-progress-thumb {
+    position: absolute;
+    top: 50%;
+    width: 16px;
+    height: 16px;
+    background: white;
+    border-radius: 50%;
+    transform: translate(-50%, -50%) scale(0);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+    transition: transform 0.2s ease, left 0.3s linear;
+}
+
+.player-progress-track:hover .player-progress-thumb {
+    transform: translate(-50%, -50%) scale(1);
+}
+
+.player-progress-times {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.4);
+    font-weight: 500;
+    margin-top: 6px;
+    padding: 0 2px;
+    user-select: none;
+}
+
+/* Controls row */
+.player-controls-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.player-controls-left,
+.player-controls-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+}
+
+.player-controls-right {
+    justify-content: flex-end;
+}
+
+.player-controls-center {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.player-ctrl-btn {
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.5);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.player-ctrl-btn:hover {
+    color: white;
+}
+
+.player-ctrl-btn .material-symbols-outlined {
+    font-size: 28px;
+}
+
+/* Main play/pause button in control bar */
+.player-main-play {
+    background: white;
+    border: none;
+    border-radius: 50%;
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+}
+
+.player-main-play:hover {
+    transform: scale(1.1);
+}
+
+.player-main-play .material-symbols-outlined {
+    font-size: 28px;
+    color: var(--accent-purple);
+    font-variation-settings: 'FILL' 1;
+}
+
+/* Quality badge */
+.player-quality-badge {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    padding: 2px 8px;
+    cursor: pointer;
+    background: none;
+    transition: all 0.2s ease;
+}
+
+.player-quality-badge:hover {
+    color: white;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+/* Mood Mode button */
+.player-mood-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border-radius: 9999px;
+    border: 1px solid rgba(127, 19, 236, 0.3);
+    background: rgba(127, 19, 236, 0.1);
+    color: var(--accent-purple-light);
+    font-size: 0.85rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 0 25px rgba(127, 19, 236, 0.6), inset 0 0 10px rgba(127, 19, 236, 0.2);
+}
+
+.player-mood-btn:hover {
+    background: rgba(127, 19, 236, 0.2);
+    color: white;
+}
+
+.player-mood-btn .material-symbols-outlined {
+    font-size: 18px;
+    font-variation-settings: 'FILL' 1;
+}
+
+/* Separator */
+.player-separator {
+    width: 1px;
+    height: 24px;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+/* ============================
+   Info section below the fold
+   ============================ */
 .viewer-info {
     display: flex;
     flex-direction: column;
@@ -66,7 +476,6 @@
     padding-top: 16px;
 }
 
-/* Top row: main info + sidebar card */
 .viewer-info-layout {
     display: flex;
     gap: 40px;
@@ -80,6 +489,25 @@
 
     .viewer-info-sidebar {
         width: 100% !important;
+    }
+
+    .player-controls {
+        width: 96%;
+        padding: 16px;
+        border-radius: 16px;
+        bottom: 16px;
+    }
+
+    .player-mood-btn {
+        display: none;
+    }
+
+    .player-separator {
+        display: none;
+    }
+
+    .player-title-pill h2 {
+        max-width: 180px;
     }
 }
 
@@ -157,12 +585,28 @@
     justify-content: center;
 }
 
+.viewer-meta-icon-size {
+    font-size: 20px;
+}
+
+.viewer-meta-label {
+    margin-bottom: 0;
+}
+
+.viewer-meta-value {
+    font-weight: 600;
+}
+
 .viewer-watchlist-btn {
     width: 100%;
     margin-bottom: 4px;
 }
 
-/* "You Might Also Like" */
+.viewer-watchlist-icon {
+    font-size: 20px;
+}
+
+/* Related movies */
 .viewer-related {
     margin-top: 8px;
 }
@@ -180,7 +624,7 @@
     gap: 16px;
 }
 
-/* Loading state */
+/* Loading + Not Found states */
 .viewer-loading {
     display: flex;
     align-items: center;
@@ -188,7 +632,19 @@
     min-height: 60vh;
 }
 
-/* Not found state */
+.viewer-loading-panel {
+    padding: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.viewer-loading-icon {
+    font-size: 40px;
+    color: var(--accent-purple);
+}
+
 .viewer-not-found {
     text-align: center;
     padding: 64px 20px;
@@ -206,4 +662,37 @@
 .viewer-not-found .btn {
     margin-top: 16px;
     display: inline-flex;
+}
+
+/* Scroll hint at bottom of hero */
+.viewer-scroll-hint {
+    position: absolute;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 3;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.8rem;
+    animation: bounce 2s ease-in-out infinite;
+    transition: opacity 0.4s ease;
+}
+
+.viewer-scroll-hint.controls-hidden {
+    opacity: 0;
+}
+
+@keyframes bounce {
+
+    0%,
+    100% {
+        transform: translateX(-50%) translateY(0);
+    }
+
+    50% {
+        transform: translateX(-50%) translateY(-8px);
+    }
 }
