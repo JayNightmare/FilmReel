@@ -182,11 +182,8 @@ export const Navbar = () => {
                     <h1 className="nav-logo-text">FilmReel</h1>
                 </Link>
 
-                {/* Desktop Search Bar */}
-                <div
-                    className="hidden-md nav-search-container"
-                    ref={searchWrapperRef}
-                >
+                {/* Search Bar */}
+                <div className="nav-search-container" ref={searchWrapperRef}>
                     <div className="nav-search-input-wrapper">
                         <div
                             className="nav-search-icon"

@@ -253,7 +253,7 @@ export default function Home() {
                             <span className="text-gradient">vibe</span> tonight?
                         </h2>
 
-                        <p className="hero-description truncate">
+                        <p className="hero-description line-clamp-2">
                             {featured.overview ||
                                 "Stop scrolling, start watching. Let our AI curate a personalized playlist based on exactly how you're feeling right now."}
                         </p>

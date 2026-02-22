@@ -335,6 +335,32 @@ export default function MovieViewer() {
                     <div className="viewer-info-main">
                         <h1 className="viewer-title">{movie.title}</h1>
 
+                        {/* Mobile-only: playback actions pill */}
+                        {playing && (
+                            <div className="viewer-mobile-actions">
+                                <button
+                                    className="viewer-mobile-action-btn"
+                                    onClick={refreshIframe}
+                                    title="Refresh player"
+                                >
+                                    <span className="material-symbols-outlined">
+                                        refresh
+                                    </span>
+                                    Refresh
+                                </button>
+                                <button
+                                    className="viewer-mobile-action-btn"
+                                    onClick={() => setIsFeedbackOpen(true)}
+                                    title="Submit Feedback"
+                                >
+                                    <span className="material-symbols-outlined">
+                                        feedback
+                                    </span>
+                                    Report Issue
+                                </button>
+                            </div>
+                        )}
+
                         {genreNames.length > 0 && (
                             <div className="viewer-genre-tags">
                                 {genreNames.map((name) => (
