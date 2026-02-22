@@ -235,7 +235,7 @@ export default function Home() {
                             }
                             onError={(e) => {
                                 (e.target as HTMLImageElement).src =
-                                    "https://via.placeholder.com/1400x800/1a1122/7f13ec";
+                                    "https://placehold.co/1400x800";
                             }}
                             alt={featured.title}
                             className="hero-bg-image group-hover-scale-110"
