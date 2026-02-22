@@ -335,31 +335,51 @@ export default function MovieViewer() {
                     <div className="viewer-info-main">
                         <h1 className="viewer-title">{movie.title}</h1>
 
-                        {/* Mobile-only: playback actions pill */}
-                        {playing && (
-                            <div className="viewer-mobile-actions">
-                                <button
-                                    className="viewer-mobile-action-btn"
-                                    onClick={refreshIframe}
-                                    title="Refresh player"
-                                >
-                                    <span className="material-symbols-outlined">
-                                        refresh
-                                    </span>
-                                    Refresh
-                                </button>
-                                <button
-                                    className="viewer-mobile-action-btn"
-                                    onClick={() => setIsFeedbackOpen(true)}
-                                    title="Submit Feedback"
-                                >
-                                    <span className="material-symbols-outlined">
-                                        feedback
-                                    </span>
-                                    Report Issue
-                                </button>
-                            </div>
-                        )}
+                        {/* Mobile action row: Share + Watchlist */}
+                        <div className="viewer-mobile-actions">
+                            <button
+                                className="viewer-mobile-action-btn"
+                                onClick={() => {
+                                    navigator
+                                        .share?.({
+                                            title: movie.title,
+                                            url: window.location.href,
+                                        })
+                                        .catch(() => {
+                                            navigator.clipboard.writeText(
+                                                window.location.href,
+                                            );
+                                        });
+                                }}
+                                title="Share"
+                            >
+                                <span className="material-symbols-outlined">
+                                    share
+                                </span>
+                                Share
+                            </button>
+                            <button
+                                className={`viewer-mobile-action-btn ${inWatchlist ? "active" : ""}`}
+                                onClick={toggleWatchlist}
+                                title={
+                                    inWatchlist
+                                        ? "In Watchlist"
+                                        : "Add to Watchlist"
+                                }
+                            >
+                                <span className="material-symbols-outlined">
+                                    {inWatchlist
+                                        ? "bookmark_added"
+                                        : "bookmark_add"}
+                                </span>
+                                {inWatchlist ? "Saved" : "Watchlist"}
+                            </button>
+                        </div>
+
+                        <p className="viewer-overview">
+                            {movie.overview ||
+                                "No synopsis available for this title."}
+                        </p>
 
                         {genreNames.length > 0 && (
                             <div className="viewer-genre-tags">
@@ -374,10 +394,32 @@ export default function MovieViewer() {
                             </div>
                         )}
 
-                        <p className="viewer-overview">
-                            {movie.overview ||
-                                "No synopsis available for this title."}
-                        </p>
+                        {/* Mobile: Having Issues? row */}
+                        <div className="viewer-mobile-issues">
+                            <span className="viewer-mobile-issues-label">
+                                Having issues?
+                            </span>
+                            <button
+                                className="viewer-mobile-action-btn"
+                                onClick={refreshIframe}
+                                title="Refresh player"
+                            >
+                                <span className="material-symbols-outlined">
+                                    refresh
+                                </span>
+                                Refresh
+                            </button>
+                            <button
+                                className="viewer-mobile-action-btn"
+                                onClick={() => setIsFeedbackOpen(true)}
+                                title="Submit Feedback"
+                            >
+                                <span className="material-symbols-outlined">
+                                    feedback
+                                </span>
+                                Feedback
+                            </button>
+                        </div>
 
                         {/* Cast Section */}
                         {cast.length > 0 && (

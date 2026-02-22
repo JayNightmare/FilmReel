@@ -45,7 +45,7 @@
 - **Phase 8 Implementation**: Implemented proper mobile responsiveness for the Navbar. The Search bar, which was previously strictly hidden on mobile devices, has been restored by dynamically reflowing the Navbar into two rows (Logo/Actions on top, Search underneath) via CSS `flex-wrap` and `order`.
 - **Phase 9 Implementation**: Addressed mobile page stretching issues. Fixed the `MovieViewer` Cast Carousel from exceeding `100vw` by securely constraining its mobile `max-width`. Updated the Feedback Modal to include `max-height` (90vh) and internal scrolling `overflow-y: auto` so it remains fully accessible on short screens.
 - **Phase 10 Implementation**: Comprehensive mobile layout audit and overhaul. Added `overflow-x: hidden` globally (html/body/container/navbar), fixed the Navbar with `flex-wrap` and `flex-basis: 100%` to force the search bar to its own row, added responsive hero section sizing, fixed hero description clipping by replacing `truncate` with `line-clamp-2`, added mobile carousel edge-to-edge scrolling, and repositioned the FAB.
-- **Phase 11 Implementation**: Moved the playback feedback and refresh actions from the hard-to-tap overlay pill to a dedicated mobile-only pill row next to the movie title in the info section. The overlay pill is hidden on mobile, while the new action buttons are hidden on desktop.
+- **Phase 11 Implementation**: Restructured the MovieViewer details section to a YouTube-style mobile layout: Title → Share/Watchlist row → Description → "Having issues?" row (Refresh + Feedback). Overlay watchlist button is hidden on mobile. Fixed CSS cascade order so base `display: none` rules appear before media query overrides.
 
 ### Next Features
 
