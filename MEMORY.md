@@ -32,6 +32,7 @@
 - **Deployment Prep**: Added gh-pages NPM scripts and [public/CNAME](file:///v:/Documents/Personal%20Projects/FilmReel/public/CNAME).
 - **Refactoring**: Completely overhauled the UI design system to flawlessly match the Google Stitch UI reference.
 - **CI/CD**: Added a GitHub Actions workflow to automatically build and deploy the React application to the `gh-pages` branch upon pushes to main/master.
+- **SEO & Social**: Improved website metadata (`index.html`) with Open Graph tags, Twitter Cards, a detailed description, and a custom SVG favicon (`film-reel.svg`).
 
 - **Phase 1 Implementation**: Enhanced foundational codebase with new TMDB API endpoints ([getMovieCredits](file:///v:/Documents/Personal%20Projects/FilmReel/src/services/api.ts#123-129), [getHiddenGems](file:///v:/Documents/Personal%20Projects/FilmReel/src/services/api.ts#160-170), etc.), upgraded `StorageService`, and built [useStorageSync](file:///v:/Documents/Personal%20Projects/FilmReel/src/hooks/useStorageSync.ts#3-36) hook. Redesigned Home page with reactive rows.
 - **Phase 2 Implementation**: Integrated TMDB Cast credits into Movie Viewer. Completely overhauled Mood Survey (glassmorphic UI, one-word options, animated sequence, Extend Survey via sentiment matching).
