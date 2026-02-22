@@ -252,8 +252,6 @@ export default function MovieViewer() {
                     key={iframeKey}
                     src={playing ? buildEmbedUrl() : "about:blank"}
                     title={movie.title}
-                    sandbox="allow-scripts allow-same-origin allow-forms allow-fullscreen"
-                    allow="fullscreen"
                     allowFullScreen
                     className="viewer-iframe"
                 />
