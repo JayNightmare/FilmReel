@@ -1,15 +1,54 @@
-# Project Memory
+# Project Memory: FilmReel
+
+## Current Project State
+
+- All core UI components and pages (Browser, Survey, Viewer, Account) have been implemented.
+- The project is fully styled with the Google Stitch UI Glassmorphism aesthetic.
+- Deployment scripts and custom domain CNAME have been added for `film.nexusgit.info`.
+- Infinite scrolling (vertical + horizontal) on Home page using IntersectionObserver.
+- Row-scoped movie deduplication in [MovieRow.tsx](file:///v:/Documents/Personal%20Projects/FilmReel/src/components/MovieRow.tsx) (replaced global dedup that was emptying rows).
+- Genre labels dynamically resolved via `GenreMap` service (seeded with TMDB's 19 standard genres).
+- Functional search: Navbar wired to `/search?q=` route with infinite scroll [SearchResults.tsx](file:///v:/Documents/Personal%20Projects/FilmReel/src/pages/SearchResults.tsx).
+- MovieViewer upgraded: synopsis, genre tags, poster fallback, "You Might Also Like" section.
+- API key no longer logged to console.
+- Watchlist feature: bookmark toggle on MovieCard + MovieViewer, localStorage CRUD, Account page grid.
+- Account page polished: save/remove toast notifications, dedicated [Account.css](file:///v:/Documents/Personal%20Projects/FilmReel/src/styles/Account.css), expanded genre picker.
+- 404 "Scene Not Found" page with catch-all route.
+- Netflix-style MovieViewer: full-viewport player, gradient fade, scroll-for-details, below-the-fold info.
+- Stitch UI immersive player overlay: glassmorphism control bar, title pill, center play, Mood Mode, cinematic backdrop.
+- [Movie](file:///v:/Documents/Personal%20Projects/FilmReel/src/services/api.ts#5-16) interface includes optional `runtime` field.
+- PostMessage player sync: live progress/time from VidKing `PLAYER_EVENT`, auto-hide controls on idle, resume-from-saved-progress via `StorageService`.
 
 ## Active Tasks
 
-- None
+### Completed
 
-## Completed Tasks
+- Project Initialization (Vite + React + TS)
+- Core project memory created (MEMORY.md, CHANGELOG.md)
+- **Routing and Architecture**: Built App routing and top navigation using React Router.
+- **Local Storage Manager**: Created service to handle saving user preferences and mood data.
+- **API Services**: Setup fetch functions to pull mock movies/genres from TMDB and VidKing embeds.
+- **Features Implementation**: Home Dashboard (Netflix clone approach), Mood Survey (weighted local system), Movie Viewer (VidKing iFrame integration).
+- **Deployment Prep**: Added gh-pages NPM scripts and [public/CNAME](file:///v:/Documents/Personal%20Projects/FilmReel/public/CNAME).
+- **Refactoring**: Completely overhauled the UI design system to flawlessly match the Google Stitch UI reference.
 
-- Implement Feedback modal in Movie Viewer. Creates a new component to ping a Discord Webhook securely without routing the user offsite.
+- **Phase 1 Implementation**: Enhanced foundational codebase with new TMDB API endpoints ([getMovieCredits](file:///v:/Documents/Personal%20Projects/FilmReel/src/services/api.ts#123-129), [getHiddenGems](file:///v:/Documents/Personal%20Projects/FilmReel/src/services/api.ts#160-170), etc.), upgraded `StorageService`, and built [useStorageSync](file:///v:/Documents/Personal%20Projects/FilmReel/src/hooks/useStorageSync.ts#3-36) hook. Redesigned Home page with reactive rows.
+- **Phase 2 Implementation**: Integrated TMDB Cast credits into Movie Viewer. Completely overhauled Mood Survey (glassmorphic UI, one-word options, animated sequence, Extend Survey via sentiment matching).
+
+- **Phase 3 Implementation**: Enhanced the Navbar with a live debounced search autocomplete and an advanced filter panel. Also overhauled SearchResults to support the new URL parameters.
+- **Phase 4 Implementation**: Upgraded the Movie Viewer splash screen with an interactive progress panel. Added a seek slider, Restart, and Resume buttons that sync identically to VidKing's `watch_progress` key.
+
+### Next Features
+
+- All Phase 1-4 features have been fully completed.
 
 ## Architectural Decisions
 
-- UI leans heavily towards "glassmorphism" with `glass-panel` and standard `btn` classes.
-- Playback relies on VidKing iframe and captures messages from it.
-- Forms should retain the application's clean glassmorphic style.
+- UI Framework: React with TypeScript.
+- Build Tool: Vite
+- CSS Strategy: Vanilla CSS custom Glassmorphism mimicking Tailwind utility concepts (Google Stitch UI).
+- Data Persistence: LocalStorage (No Backend Database).
+- Architecture: Functional Components with Hooks.
+- APIs:
+    - Video stream/information: `www.vidking.net`
+    - Metadata: TMDB
