@@ -9,7 +9,7 @@ import { GenreMap } from "../services/genreMap";
 import "../styles/Home.css";
 
 const WATCHLIST_KEY = "filmreel_watchlist";
-const WATCH_PROGRESS_KEY = "filmreel_watch_progress";
+const WATCHED_MOVIES_KEY = "filmreel_watched_movies";
 
 export default function Home() {
     const [popular, setPopular] = useState<Movie[]>([]);
@@ -28,10 +28,8 @@ export default function Home() {
     const [favGenreMoviesP1, setFavGenreMoviesP1] = useState<Movie[]>([]);
     const [favGenreMoviesP2, setFavGenreMoviesP2] = useState<Movie[]>([]);
 
-    // Continue Watching — lives movies resolved from progress IDs
-    const [continueWatchingMovies, setContinueWatchingMovies] = useState<
-        Movie[]
-    >([]);
+    // Watch It Again — movies resolved from watched IDs
+    const [watchedLiveMovies, setWatchedLiveMovies] = useState<Movie[]>([]);
 
     const navigate = useNavigate();
 
@@ -40,9 +38,9 @@ export default function Home() {
         WATCHLIST_KEY,
         StorageService.getWatchlist,
     );
-    const watchProgress = useStorageSync(
-        WATCH_PROGRESS_KEY,
-        StorageService.getAllWatchProgress,
+    const watchedMovies = useStorageSync(
+        WATCHED_MOVIES_KEY,
+        StorageService.getWatchedMovies,
     );
     const profile = useStorageSync(
         "filmreel_user_profile",
@@ -61,10 +59,10 @@ export default function Home() {
         genre_ids: [],
     }));
 
-    // Fetch continue-watching movie details when progress changes
+    // Fetch watched movie details when watched list changes
     useEffect(() => {
-        if (watchProgress.length === 0) {
-            setContinueWatchingMovies([]);
+        if (watchedMovies.length === 0) {
+            setWatchedLiveMovies([]);
             return;
         }
 
@@ -72,20 +70,20 @@ export default function Home() {
         const fetchMovies = async () => {
             try {
                 const movies = await Promise.all(
-                    watchProgress
+                    watchedMovies
                         .slice(0, 20)
-                        .map((p) => APIService.getMovieDetails(p.movieId)),
+                        .map((id) => APIService.getMovieDetails(id)),
                 );
-                if (!cancelled) setContinueWatchingMovies(movies);
+                if (!cancelled) setWatchedLiveMovies(movies);
             } catch (err) {
-                console.error("Failed to load continue-watching movies:", err);
+                console.error("Failed to load watched movies:", err);
             }
         };
         fetchMovies();
         return () => {
             cancelled = true;
         };
-    }, [watchProgress]);
+    }, [watchedMovies]);
 
     // Fetch favorite genre movies when profile changes
     useEffect(() => {
@@ -286,11 +284,11 @@ export default function Home() {
                 </section>
             )}
 
-            {/* 1. Continue Watching */}
-            {continueWatchingMovies.length > 0 && (
+            {/* 1. Watch It Again */}
+            {watchedLiveMovies.length > 0 && (
                 <MovieRow
-                    title="Continue Watching"
-                    initialMovies={continueWatchingMovies}
+                    title="Watch It Again"
+                    initialMovies={watchedLiveMovies}
                     staticMovies
                     hideViewAll
                 />

@@ -38,6 +38,7 @@
     flex: 1;
     max-width: 450px;
     margin: 0 32px;
+    position: relative;
 }
 
 .nav-search-input-wrapper {

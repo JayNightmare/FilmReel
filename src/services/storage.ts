@@ -17,15 +17,10 @@ export interface WatchlistItem {
     addedAt: string; // ISO String
 }
 
-export interface WatchProgress {
-    movieId: number;
-    currentTime: number;
-}
-
 const PROFILE_KEY = "filmreel_user_profile";
 const MOOD_HISTORY_KEY = "filmreel_mood_history";
 const WATCHLIST_KEY = "filmreel_watchlist";
-const WATCH_PROGRESS_KEY = "filmreel_watch_progress";
+const WATCHED_MOVIES_KEY = "filmreel_watched_movies";
 
 // Default Profile
 const defaultProfile: UserProfile = {
@@ -106,60 +101,56 @@ export const StorageService = {
         );
     },
 
-    // --- Watch Progress ---
-    saveWatchProgress: (movieId: number, currentTime: number): void => {
+    // --- Watched Movies Tracking ---
+    markAsWatched: (movieId: number): void => {
         try {
-            // FilmReel Storage
-            const data = localStorage.getItem(WATCH_PROGRESS_KEY);
-            const progress: Record<string, number> = data
-                ? JSON.parse(data)
-                : {};
-            progress[String(movieId)] = Math.floor(currentTime);
-            localStorage.setItem(WATCH_PROGRESS_KEY, JSON.stringify(progress));
-            StorageService.dispatchStorageEvent(WATCH_PROGRESS_KEY);
+            const data = localStorage.getItem(WATCHED_MOVIES_KEY);
+            const watched: number[] = data ? JSON.parse(data) : [];
 
-            // VidKing Storage Sync
-            const vkData = localStorage.getItem("watch_progress");
-            if (vkData) {
-                const vkProgress = JSON.parse(vkData);
-                const vkMovie = vkProgress[String(movieId)];
-                if (vkMovie && vkMovie.progress) {
-                    vkMovie.progress.watched = currentTime;
-                    vkMovie.progress.percent =
-                        (currentTime / vkMovie.progress.duration) * 100;
-                    vkMovie.progress.last_watched = Date.now();
-                    vkMovie.last_updated = Date.now();
-                    localStorage.setItem(
-                        "watch_progress",
-                        JSON.stringify(vkProgress),
-                    );
-                }
+            if (!watched.includes(movieId)) {
+                // Keep the most recent 100 watched movies to prevent infinite buildup
+                const updated = [movieId, ...watched].slice(0, 100);
+                localStorage.setItem(
+                    WATCHED_MOVIES_KEY,
+                    JSON.stringify(updated),
+                );
+                StorageService.dispatchStorageEvent(WATCHED_MOVIES_KEY);
             }
         } catch {
             /* storage full — silently fail */
         }
     },
 
-    getWatchProgress: (movieId: number): number | null => {
+    hasWatched: (movieId: number): boolean => {
         try {
-            const data = localStorage.getItem(WATCH_PROGRESS_KEY);
-            if (!data) return null;
-            const progress: Record<string, number> = JSON.parse(data);
-            return progress[String(movieId)] ?? null;
+            const data = localStorage.getItem(WATCHED_MOVIES_KEY);
+            if (!data) return false;
+            const watched: number[] = JSON.parse(data);
+            return watched.includes(movieId);
         } catch {
-            return null;
+            return false;
         }
     },
 
-    getVidKingDuration: (movieId: number): number | null => {
+    getWatchedMovies: (): number[] => {
         try {
-            const data = localStorage.getItem("watch_progress");
-            if (!data) return null;
-            const progress = JSON.parse(data);
-            const vkMovie = progress[String(movieId)];
-            return vkMovie?.progress?.duration || null;
+            const data = localStorage.getItem(WATCHED_MOVIES_KEY);
+            return data ? JSON.parse(data) : [];
         } catch {
-            return null;
+            return [];
+        }
+    },
+
+    removeWatchedMovie: (movieId: number): void => {
+        try {
+            const data = localStorage.getItem(WATCHED_MOVIES_KEY);
+            if (!data) return;
+            const watched: number[] = JSON.parse(data);
+            const filtered = watched.filter((id) => id !== movieId);
+            localStorage.setItem(WATCHED_MOVIES_KEY, JSON.stringify(filtered));
+            StorageService.dispatchStorageEvent(WATCHED_MOVIES_KEY);
+        } catch {
+            /* silently fail */
         }
     },
 
@@ -171,35 +162,6 @@ export const StorageService = {
             reader.onload = () => resolve(reader.result as string);
             reader.onerror = (error) => reject(error);
         });
-    },
-
-    getAllWatchProgress: (): WatchProgress[] => {
-        try {
-            const data = localStorage.getItem(WATCH_PROGRESS_KEY);
-            if (!data) return [];
-            const progress: Record<string, number> = JSON.parse(data);
-            return Object.entries(progress)
-                .filter(([, time]) => time > 10)
-                .map(([id, time]) => ({
-                    movieId: parseInt(id, 10),
-                    currentTime: time,
-                }));
-        } catch {
-            return [];
-        }
-    },
-
-    removeWatchProgress: (movieId: number): void => {
-        try {
-            const data = localStorage.getItem(WATCH_PROGRESS_KEY);
-            if (!data) return;
-            const progress: Record<string, number> = JSON.parse(data);
-            delete progress[String(movieId)];
-            localStorage.setItem(WATCH_PROGRESS_KEY, JSON.stringify(progress));
-            StorageService.dispatchStorageEvent(WATCH_PROGRESS_KEY);
-        } catch {
-            /* silently fail */
-        }
     },
 
     dispatchStorageEvent: (key: string): void => {

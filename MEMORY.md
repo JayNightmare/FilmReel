@@ -39,10 +39,13 @@
 
 - **Phase 3 Implementation**: Enhanced the Navbar with a live debounced search autocomplete and an advanced filter panel. Also overhauled SearchResults to support the new URL parameters.
 - **Phase 4 Implementation**: Upgraded the Movie Viewer splash screen with an interactive progress panel. Added a seek slider, Restart, and Resume buttons that sync identically to VidKing's `watch_progress` key.
+- **Phase 5 Implementation**: Added multi-provider streaming support to the Movie Viewer. Users can now switch between VidKing (default), VidSrc, and SuperEmbed via a Glassmorphic dropdown in the details sidebar to bypass broken host servers. Note: Progress tracking degrades gracefully for VidSrc/SuperEmbed as they don't emit postMessage events.
+- **Phase 6 Implementation**: Replaced VidKing continuous `postMessage` time sync with a simple binary "Watched" status trigger upon play. This resolves the severe iframe stuttering issue caused by constant React state updates. The Home dashboard "Continue Watching" row was similarly converted to a "Watch It Again" row.
+- **Phase 7 Implementation**: Fixed UI styling bugs across the application. Added a sleek Glassmorphism design to the Source Provider dropdown in the Movie Viewer. Fixed the Advanced Search Panel's positioning in the Navbar to correctly anchor below the search bar, and updated its internal buttons to use the global theme.
 
 ### Next Features
 
-- All Phase 1-4 features have been fully completed.
+- All Phase 1-5 features have been fully completed.
 
 ## Architectural Decisions
 
@@ -52,5 +55,5 @@
 - Data Persistence: LocalStorage (No Backend Database).
 - Architecture: Functional Components with Hooks.
 - APIs:
-    - Video stream/information: `www.vidking.net`
+    - Video stream/information: `vidking.net`, `vidsrc.me`, `multiembed.mov`
     - Metadata: TMDB

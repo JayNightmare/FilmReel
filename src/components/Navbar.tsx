@@ -434,7 +434,7 @@ export const Navbar = () => {
 
                             <div className="advanced-search-actions">
                                 <button
-                                    className="settings-btn remove"
+                                    className="btn btn-glass"
                                     onClick={() => {
                                         setFilterGenres([]);
                                         setSelectedActor(null);
@@ -445,7 +445,7 @@ export const Navbar = () => {
                                     Clear
                                 </button>
                                 <button
-                                    className="settings-btn save"
+                                    className="btn btn-primary"
                                     onClick={applyAdvancedFilters}
                                 >
                                     Apply Filters

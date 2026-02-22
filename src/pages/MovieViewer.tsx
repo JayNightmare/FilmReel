@@ -13,27 +13,6 @@ const FALLBACK_POSTER =
 
 const CONTROLS_IDLE_MS = 3000;
 
-interface VidKingEvent {
-    type: "PLAYER_EVENT";
-    data: {
-        event: "timeupdate" | "play" | "pause" | "ended" | "seeked";
-        currentTime: number;
-        duration: number;
-        progress: number;
-        id: string;
-    };
-}
-
-function formatTime(seconds: number): string {
-    if (!seconds || seconds < 0) return "0:00";
-    const h = Math.floor(seconds / 3600);
-    const m = Math.floor((seconds % 3600) / 60);
-    const s = Math.floor(seconds % 60);
-    if (h > 0)
-        return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-    return `${m}:${String(s).padStart(2, "0")}`;
-}
-
 export default function MovieViewer() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
@@ -51,9 +30,10 @@ export default function MovieViewer() {
     // Playback state (from VidKing postMessage)
     const [controlsVisible, setControlsVisible] = useState(true);
 
-    // Saved resume position
-    const [resumeTime, setResumeTime] = useState<number | null>(null);
-    const [vkDuration, setVkDuration] = useState<number | null>(null);
+    // Provider state
+    type Provider = "vidking" | "vidsrc" | "superembed";
+    const [provider, setProvider] = useState<Provider>("vidking");
+
     const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
 
     const refreshIframe = useCallback(() => {
@@ -76,8 +56,6 @@ export default function MovieViewer() {
                 setSimilar(related.slice(0, 6));
                 setCast(credits.slice(0, 15));
                 setInWatchlist(StorageService.isInWatchlist(movieId));
-                setResumeTime(StorageService.getWatchProgress(movieId));
-                setVkDuration(StorageService.getVidKingDuration(movieId));
             } catch (e) {
                 console.error("Failed to load movie details", e);
             } finally {
@@ -87,44 +65,6 @@ export default function MovieViewer() {
         fetchMovie();
         window.scrollTo(0, 0);
     }, [id]);
-
-    // Listen for VidKing postMessage events
-    useEffect(() => {
-        if (!playing || !id) return;
-
-        const movieId = parseInt(id, 10);
-        let saveCounter = 0;
-
-        const handleMessage = (event: MessageEvent) => {
-            try {
-                const parsed: VidKingEvent =
-                    typeof event.data === "string"
-                        ? JSON.parse(event.data)
-                        : event.data;
-
-                if (parsed?.type !== "PLAYER_EVENT") return;
-                const { data } = parsed;
-
-                switch (data.event) {
-                    case "timeupdate":
-                        // Save progress every ~5 updates
-                        saveCounter++;
-                        if (saveCounter % 5 === 0) {
-                            StorageService.saveWatchProgress(
-                                movieId,
-                                data.currentTime,
-                            );
-                        }
-                        break;
-                }
-            } catch {
-                /* ignore non-JSON messages */
-            }
-        };
-
-        window.addEventListener("message", handleMessage);
-        return () => window.removeEventListener("message", handleMessage);
-    }, [playing, id]);
 
     // Auto-hide controls on idle
     const resetIdleTimer = useCallback(() => {
@@ -207,14 +147,18 @@ export default function MovieViewer() {
     };
 
     const buildEmbedUrl = () => {
-        const params = new URLSearchParams({
-            color: "7f13ec",
-            autoPlay: "true",
-        });
-        if (resumeTime && resumeTime > 10) {
-            params.set("progress", String(resumeTime));
+        if (provider === "vidking") {
+            const params = new URLSearchParams({
+                color: "7f13ec",
+                autoPlay: "true",
+            });
+            return `https://vidking.net/embed/movie/${id}?${params.toString()}`;
+        } else if (provider === "vidsrc") {
+            return `https://vidsrc.me/embed/movie?tmdb=${id}`;
+        } else if (provider === "superembed") {
+            return `https://multiembed.mov/directstream.php?video_id=${id}&tmdb=1`;
         }
-        return `https://vidking.net/embed/movie/${id}?${params.toString()}`;
+        return "about:blank";
     };
 
     // Full control bar for the overlay (pre-play, decorative)
@@ -304,7 +248,6 @@ export default function MovieViewer() {
                     </button>
                 </div>
 
-                {/* VidKing iframe */}
                 <iframe
                     key={iframeKey}
                     src={playing ? buildEmbedUrl() : "about:blank"}
@@ -312,12 +255,15 @@ export default function MovieViewer() {
                     sandbox="allow-scripts allow-same-origin allow-forms allow-fullscreen"
                     allow="fullscreen"
                     allowFullScreen
+                    className="viewer-iframe"
                 />
 
-                {/* Stitch UI Poster Overlay (pre-play) */}
                 <div
                     className={`player-overlay ${playing ? "hidden" : ""}`}
-                    onClick={() => setPlaying(true)}
+                    onClick={() => {
+                        StorageService.markAsWatched(movie.id);
+                        setPlaying(true);
+                    }}
                 >
                     <div
                         className="player-backdrop"
@@ -327,75 +273,11 @@ export default function MovieViewer() {
 
                     {/* Center: Play Controls */}
                     <div className="player-center-play">
-                        {!resumeTime || resumeTime <= 10 || !vkDuration ? (
-                            <div className="player-play-circle">
-                                <span className="material-symbols-outlined">
-                                    play_arrow
-                                </span>
-                            </div>
-                        ) : (
-                            <div
-                                className="player-splash-controls animate-fade-in-up"
-                                onClick={(e) => e.stopPropagation()}
-                            >
-                                <h3 className="player-splash-title">
-                                    Ready to continue?
-                                </h3>
-                                <div className="player-splash-seek">
-                                    <span className="player-splash-time">
-                                        {formatTime(resumeTime)}
-                                    </span>
-                                    <input
-                                        title="Seek Position"
-                                        type="range"
-                                        min="0"
-                                        max={vkDuration}
-                                        value={resumeTime}
-                                        onChange={(e) => {
-                                            const newTime = parseInt(
-                                                e.target.value,
-                                            );
-                                            setResumeTime(newTime);
-                                            StorageService.saveWatchProgress(
-                                                movie.id,
-                                                newTime,
-                                            );
-                                        }}
-                                        className="player-splash-slider"
-                                    />
-                                    <span className="player-splash-time">
-                                        {formatTime(vkDuration)}
-                                    </span>
-                                </div>
-                                <div className="player-splash-buttons">
-                                    <button
-                                        className="btn btn-glass player-splash-btn"
-                                        onClick={() => {
-                                            StorageService.saveWatchProgress(
-                                                movie.id,
-                                                0,
-                                            );
-                                            setResumeTime(0);
-                                            setPlaying(true);
-                                        }}
-                                    >
-                                        <span className="material-symbols-outlined">
-                                            replay
-                                        </span>
-                                        Restart
-                                    </button>
-                                    <button
-                                        className="btn btn-primary player-splash-btn"
-                                        onClick={() => setPlaying(true)}
-                                    >
-                                        <span className="material-symbols-outlined">
-                                            play_arrow
-                                        </span>
-                                        Resume
-                                    </button>
-                                </div>
-                            </div>
-                        )}
+                        <div className="player-play-circle">
+                            <span className="material-symbols-outlined">
+                                play_arrow
+                            </span>
+                        </div>
                     </div>
 
                     {/* Bottom: Control bar (static preview) */}
@@ -535,6 +417,38 @@ export default function MovieViewer() {
                         </button>
 
                         <div className="viewer-meta-list">
+                            <div className="viewer-meta-item">
+                                <div className="viewer-meta-icon">
+                                    <span className="material-symbols-outlined text-purple viewer-meta-icon-size">
+                                        router
+                                    </span>
+                                </div>
+                                <div style={{ width: "100%" }}>
+                                    <span className="label-glass viewer-meta-label">
+                                        Source Provider
+                                    </span>
+                                    <select
+                                        className="viewer-provider-select"
+                                        value={provider}
+                                        onChange={(e) => {
+                                            setProvider(
+                                                e.target.value as Provider,
+                                            );
+                                            setPlaying(false); // Reset playing state when switching
+                                        }}
+                                        title="Select Streaming Provider"
+                                    >
+                                        <option value="vidking">
+                                            VidKing (Recommended)
+                                        </option>
+                                        <option value="vidsrc">VidSrc</option>
+                                        <option value="superembed">
+                                            SuperEmbed
+                                        </option>
+                                    </select>
+                                </div>
+                            </div>
+
                             <div className="viewer-meta-item">
                                 <div className="viewer-meta-icon">
                                     <span className="material-symbols-outlined text-purple viewer-meta-icon-size">
