@@ -2,9 +2,14 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { APIService } from "../services/api";
 import type { Movie, Genre } from "../services/api";
+import { StorageService } from "../services/storage";
+import { useStorageSync } from "../hooks/useStorageSync";
 import { MovieRow } from "../components/MovieRow";
 import { GenreMap } from "../services/genreMap";
 import "../styles/Home.css";
+
+const WATCHLIST_KEY = "filmreel_watchlist";
+const WATCH_PROGRESS_KEY = "filmreel_watch_progress";
 
 export default function Home() {
     const [popular, setPopular] = useState<Movie[]>([]);
@@ -16,18 +21,113 @@ export default function Home() {
     const [displayedGenreCount, setDisplayedGenreCount] = useState(3);
     const [loadingMoreGenres, setLoadingMoreGenres] = useState(false);
 
+    // Hidden Gems
+    const [hiddenGems, setHiddenGems] = useState<Movie[]>([]);
+
+    // Favorite Genre rows (2 pages)
+    const [favGenreMoviesP1, setFavGenreMoviesP1] = useState<Movie[]>([]);
+    const [favGenreMoviesP2, setFavGenreMoviesP2] = useState<Movie[]>([]);
+
+    // Continue Watching — lives movies resolved from progress IDs
+    const [continueWatchingMovies, setContinueWatchingMovies] = useState<
+        Movie[]
+    >([]);
+
     const navigate = useNavigate();
+
+    // Reactive localStorage subscriptions
+    const watchlist = useStorageSync(
+        WATCHLIST_KEY,
+        StorageService.getWatchlist,
+    );
+    const watchProgress = useStorageSync(
+        WATCH_PROGRESS_KEY,
+        StorageService.getAllWatchProgress,
+    );
+    const profile = useStorageSync(
+        "filmreel_user_profile",
+        StorageService.getProfile,
+    );
+
+    // Build watchlist as Movie-shaped objects for MovieRow
+    const watchlistAsMovies: Movie[] = watchlist.map((item) => ({
+        id: item.id,
+        title: item.title,
+        poster_path: item.poster_path,
+        backdrop_path: null,
+        overview: "",
+        vote_average: 0,
+        release_date: "",
+        genre_ids: [],
+    }));
+
+    // Fetch continue-watching movie details when progress changes
+    useEffect(() => {
+        if (watchProgress.length === 0) {
+            setContinueWatchingMovies([]);
+            return;
+        }
+
+        let cancelled = false;
+        const fetchMovies = async () => {
+            try {
+                const movies = await Promise.all(
+                    watchProgress
+                        .slice(0, 20)
+                        .map((p) => APIService.getMovieDetails(p.movieId)),
+                );
+                if (!cancelled) setContinueWatchingMovies(movies);
+            } catch (err) {
+                console.error("Failed to load continue-watching movies:", err);
+            }
+        };
+        fetchMovies();
+        return () => {
+            cancelled = true;
+        };
+    }, [watchProgress]);
+
+    // Fetch favorite genre movies when profile changes
+    useEffect(() => {
+        if (!profile.favoriteGenreId) {
+            setFavGenreMoviesP1([]);
+            setFavGenreMoviesP2([]);
+            return;
+        }
+
+        let cancelled = false;
+        const fetchFav = async () => {
+            try {
+                const [page1, page2] = await Promise.all([
+                    APIService.getMoviesByGenre(profile.favoriteGenreId!, 1),
+                    APIService.getMoviesByGenre(profile.favoriteGenreId!, 2),
+                ]);
+                if (!cancelled) {
+                    setFavGenreMoviesP1(page1);
+                    setFavGenreMoviesP2(page2);
+                }
+            } catch (err) {
+                console.error("Failed to load favorite genre:", err);
+            }
+        };
+        fetchFav();
+        return () => {
+            cancelled = true;
+        };
+    }, [profile.favoriteGenreId]);
 
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const [popMovies, genreList] = await Promise.all([
+                const [popMovies, genreList, gems] = await Promise.all([
                     APIService.getPopularMovies(1),
                     APIService.getGenres(),
+                    APIService.getHiddenGems(1),
                 ]);
 
                 setPopular(popMovies);
                 setGenres(genreList);
+                setHiddenGems(gems);
                 GenreMap.seed(genreList);
 
                 // Fetch movies for the first 3 genres
@@ -100,34 +200,18 @@ export default function Home() {
         }
     };
 
+    // Resolve the favorite genre name
+    const favGenreName =
+        profile.favoriteGenreId && genres.length > 0
+            ? (genres.find((g) => g.id === profile.favoriteGenreId)?.name ??
+              "Favorites")
+            : null;
+
     if (loading) {
         return (
-            <div
-                style={{
-                    display: "flex",
-                    justifyContent: "center",
-                    alignItems: "center",
-                    flex: 1,
-                    minHeight: "50vh",
-                }}
-            >
-                <div
-                    className="glass-panel"
-                    style={{
-                        padding: "24px",
-                        borderRadius: "50%",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                    }}
-                >
-                    <span
-                        className="material-symbols-outlined animate-pulse"
-                        style={{
-                            fontSize: "40px",
-                            color: "var(--accent-purple)",
-                        }}
-                    >
+            <div className="home-loading">
+                <div className="glass-panel home-loading-panel">
+                    <span className="material-symbols-outlined animate-pulse home-loading-icon">
                         autorenew
                     </span>
                 </div>
@@ -142,7 +226,6 @@ export default function Home() {
             {/* Hero Section */}
             {featured && (
                 <section className="hero-section group">
-                    {/* Hero Background Image */}
                     <div className="hero-bg-container">
                         <img
                             src={
@@ -161,7 +244,6 @@ export default function Home() {
                         <div className="hero-overlay-side" />
                     </div>
 
-                    {/* Hero Content */}
                     <div className="hero-content animate-fade-in-up">
                         <div className="hero-badge">
                             <span className="hero-badge-dot animate-pulse"></span>
@@ -173,15 +255,7 @@ export default function Home() {
                             <span className="text-gradient">vibe</span> tonight?
                         </h2>
 
-                        <p
-                            className="hero-description truncate"
-                            style={{
-                                WebkitLineClamp: 3,
-                                display: "-webkit-box",
-                                WebkitBoxOrient: "vertical",
-                                whiteSpace: "normal",
-                            }}
-                        >
+                        <p className="hero-description truncate">
                             {featured.overview ||
                                 "Stop scrolling, start watching. Let our AI curate a personalized playlist based on exactly how you're feeling right now."}
                         </p>
@@ -212,14 +286,65 @@ export default function Home() {
                 </section>
             )}
 
-            {/* Trending Now */}
+            {/* 1. Continue Watching */}
+            {continueWatchingMovies.length > 0 && (
+                <MovieRow
+                    title="Continue Watching"
+                    initialMovies={continueWatchingMovies}
+                    staticMovies
+                    hideViewAll
+                />
+            )}
+
+            {/* 2. My Watchlist */}
+            {watchlistAsMovies.length > 0 && (
+                <MovieRow
+                    title="My Watchlist"
+                    initialMovies={watchlistAsMovies}
+                    staticMovies
+                    hideViewAll
+                />
+            )}
+
+            {/* 3-4. Favorite Genre (2 rows) */}
+            {favGenreName && favGenreMoviesP1.length > 0 && (
+                <>
+                    <MovieRow
+                        title={`Your Favorite: ${favGenreName}`}
+                        genre={genres.find(
+                            (g) => g.id === profile.favoriteGenreId,
+                        )}
+                        initialMovies={favGenreMoviesP1}
+                    />
+                    {favGenreMoviesP2.length > 0 && (
+                        <MovieRow
+                            title={`More ${favGenreName}`}
+                            genre={genres.find(
+                                (g) => g.id === profile.favoriteGenreId,
+                            )}
+                            initialMovies={favGenreMoviesP2}
+                        />
+                    )}
+                </>
+            )}
+
+            {/* 5. Trending Now */}
             <MovieRow
                 title="Trending Now"
                 isTrending={true}
                 initialMovies={popular.slice(1)}
             />
 
-            {/* Genre Rows */}
+            {/* Hidden Gems */}
+            {hiddenGems.length > 0 && (
+                <MovieRow
+                    title="Hidden Gems"
+                    initialMovies={hiddenGems}
+                    hideViewAll
+                />
+            )}
+
+            {/* 6+. Genre Rows */}
             {genres.slice(0, displayedGenreCount).map((genre, index) => {
                 const isLast = index === displayedGenreCount - 1;
                 return (
@@ -237,20 +362,8 @@ export default function Home() {
             })}
 
             {loadingMoreGenres && (
-                <div
-                    style={{
-                        display: "flex",
-                        justifyContent: "center",
-                        padding: "24px 0",
-                    }}
-                >
-                    <span
-                        className="material-symbols-outlined animate-pulse"
-                        style={{
-                            fontSize: "32px",
-                            color: "var(--accent-purple)",
-                        }}
-                    >
+                <div className="home-loading-more">
+                    <span className="material-symbols-outlined animate-pulse home-loading-more-icon">
                         autorenew
                     </span>
                 </div>

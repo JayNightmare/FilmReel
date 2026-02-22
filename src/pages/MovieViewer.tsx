@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { APIService } from "../services/api";
-import type { Movie } from "../services/api";
+import type { Movie, CastMember } from "../services/api";
 import { GenreMap } from "../services/genreMap";
 import { StorageService } from "../services/storage";
 import { MovieCard } from "../components/MovieCard";
+import { FeedbackModal } from "../components/FeedbackModal";
 import "../styles/MovieViewer.css";
 
 const FALLBACK_POSTER =
@@ -41,25 +42,22 @@ export default function MovieViewer() {
 
     const [movie, setMovie] = useState<Movie | null>(null);
     const [similar, setSimilar] = useState<Movie[]>([]);
+    const [cast, setCast] = useState<CastMember[]>([]);
     const [loading, setLoading] = useState(true);
     const [inWatchlist, setInWatchlist] = useState(false);
     const [playing, setPlaying] = useState(false);
     const [iframeKey, setIframeKey] = useState(0);
 
     // Playback state (from VidKing postMessage)
-    const [currentTime, setCurrentTime] = useState(0);
-    const [duration, setDuration] = useState(0);
-    const [isPaused, setIsPaused] = useState(true);
     const [controlsVisible, setControlsVisible] = useState(true);
 
     // Saved resume position
     const [resumeTime, setResumeTime] = useState<number | null>(null);
+    const [vkDuration, setVkDuration] = useState<number | null>(null);
+    const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
 
     const refreshIframe = useCallback(() => {
         setIframeKey((k) => k + 1);
-        setCurrentTime(0);
-        setDuration(0);
-        setIsPaused(true);
     }, []);
 
     useEffect(() => {
@@ -68,18 +66,18 @@ export default function MovieViewer() {
             try {
                 setLoading(true);
                 setPlaying(false);
-                setCurrentTime(0);
-                setDuration(0);
-                setIsPaused(true);
                 const movieId = parseInt(id, 10);
-                const [data, related] = await Promise.all([
+                const [data, related, credits] = await Promise.all([
                     APIService.getMovieDetails(movieId),
                     APIService.getSimilarMovies(movieId),
+                    APIService.getMovieCredits(movieId),
                 ]);
                 setMovie(data);
                 setSimilar(related.slice(0, 6));
+                setCast(credits.slice(0, 15));
                 setInWatchlist(StorageService.isInWatchlist(movieId));
                 setResumeTime(StorageService.getWatchProgress(movieId));
+                setVkDuration(StorageService.getVidKingDuration(movieId));
             } catch (e) {
                 console.error("Failed to load movie details", e);
             } finally {
@@ -109,8 +107,6 @@ export default function MovieViewer() {
 
                 switch (data.event) {
                     case "timeupdate":
-                        setCurrentTime(data.currentTime);
-                        if (data.duration > 0) setDuration(data.duration);
                         // Save progress every ~5 updates
                         saveCounter++;
                         if (saveCounter % 5 === 0) {
@@ -119,22 +115,6 @@ export default function MovieViewer() {
                                 data.currentTime,
                             );
                         }
-                        break;
-                    case "play":
-                        setIsPaused(false);
-                        break;
-                    case "pause":
-                        setIsPaused(true);
-                        StorageService.saveWatchProgress(
-                            movieId,
-                            data.currentTime,
-                        );
-                        break;
-                    case "ended":
-                        setIsPaused(true);
-                        break;
-                    case "seeked":
-                        setCurrentTime(data.currentTime);
                         break;
                 }
             } catch {
@@ -226,8 +206,6 @@ export default function MovieViewer() {
         }
     };
 
-    const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
-
     const buildEmbedUrl = () => {
         const params = new URLSearchParams({
             color: "7f13ec",
@@ -242,60 +220,17 @@ export default function MovieViewer() {
     // Full control bar for the overlay (pre-play, decorative)
     const renderOverlayControls = () => (
         <div className="player-controls" onClick={(e) => e.stopPropagation()}>
-            <div className="player-progress-wrapper">
-                <div className="player-progress-track">
-                    <div
-                        className="player-progress-fill"
-                        style={{ width: "0%" }}
-                    />
-                    <div
-                        className="player-progress-thumb"
-                        style={{ left: "0%" }}
-                    />
-                </div>
-                <div className="player-progress-times">
-                    <span>0:00</span>
-                    <span>
-                        {movie.runtime
-                            ? formatTime(movie.runtime * 60)
-                            : "--:--"}
-                    </span>
-                </div>
-            </div>
-
-            <div className="player-controls-row">
-                <div className="player-controls-left">
-                    <button className="player-ctrl-btn">
-                        <span className="material-symbols-outlined">
-                            volume_up
-                        </span>
-                    </button>
-                    <button className="player-quality-badge">HD</button>
-                </div>
-
-                <div className="player-controls-center">
-                    <button className="player-ctrl-btn">
-                        <span className="material-symbols-outlined">
-                            replay_10
-                        </span>
-                    </button>
+            <div className="">
+                <div
+                    style={{
+                        display: "flex",
+                        justifyContent: "center",
+                        alignItems: "center",
+                        width: "100%",
+                    }}
+                >
                     <button
-                        className="player-main-play"
-                        onClick={() => setPlaying(true)}
-                    >
-                        <span className="material-symbols-outlined">
-                            play_arrow
-                        </span>
-                    </button>
-                    <button className="player-ctrl-btn">
-                        <span className="material-symbols-outlined">
-                            forward_10
-                        </span>
-                    </button>
-                </div>
-
-                <div className="player-controls-right">
-                    <button
+                        type="button"
                         className="player-mood-btn"
                         onClick={(e) => {
                             e.stopPropagation();
@@ -307,17 +242,6 @@ export default function MovieViewer() {
                         </span>
                         Mood Mode
                     </button>
-                    <div className="player-separator" />
-                    <button className="player-ctrl-btn">
-                        <span className="material-symbols-outlined">
-                            subtitles
-                        </span>
-                    </button>
-                    <button className="player-ctrl-btn">
-                        <span className="material-symbols-outlined">
-                            fullscreen
-                        </span>
-                    </button>
                 </div>
             </div>
         </div>
@@ -325,11 +249,61 @@ export default function MovieViewer() {
 
     return (
         <div className="animate-in fade-in">
+            <FeedbackModal
+                isOpen={isFeedbackOpen}
+                onClose={() => setIsFeedbackOpen(false)}
+                movieTitle={movie.title}
+            />
             {/* Full-screen Player Area */}
             <div
                 ref={heroRef}
                 className={`viewer-hero ${playing && !controlsVisible ? "cursor-hidden" : ""}`}
             >
+                {/* Top-left: Title pill */}
+                <div className="player-title-pill">
+                    <button
+                        className="player-icon-btn player-icon-btn-sm"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(-1);
+                        }}
+                    >
+                        <span className="material-symbols-outlined player-icon-sm">
+                            arrow_back
+                        </span>
+                    </button>
+                    <div className="player-title-pill-text">
+                        <h2>{movie.title}</h2>
+                        {releaseYear && (
+                            <span>
+                                {releaseYear} • {genreNames[0] || "Film"}
+                            </span>
+                        )}
+                    </div>
+                </div>
+
+                {/* Top-right: Actions */}
+                <div className="player-top-right">
+                    <button
+                        className="player-icon-btn"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            toggleWatchlist();
+                        }}
+                    >
+                        <span
+                            className="material-symbols-outlined player-icon-sm"
+                            style={{
+                                fontVariationSettings: inWatchlist
+                                    ? "'FILL' 1"
+                                    : "'FILL' 0",
+                            }}
+                        >
+                            {inWatchlist ? "bookmark_added" : "bookmark_add"}
+                        </span>
+                    </button>
+                </div>
+
                 {/* VidKing iframe */}
                 <iframe
                     key={iframeKey}
@@ -351,64 +325,76 @@ export default function MovieViewer() {
                     />
                     <div className="player-vignette" />
 
-                    {/* Top-left: Title pill */}
-                    <div className="player-title-pill">
-                        <button
-                            className="player-icon-btn player-icon-btn-sm"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                navigate(-1);
-                            }}
-                        >
-                            <span className="material-symbols-outlined player-icon-sm">
-                                arrow_back
-                            </span>
-                        </button>
-                        <div className="player-title-pill-text">
-                            <h2>{movie.title}</h2>
-                            {releaseYear && (
-                                <span>
-                                    {releaseYear} • {genreNames[0] || "Film"}
-                                </span>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Top-right: Actions */}
-                    <div className="player-top-right">
-                        <button
-                            className="player-icon-btn"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                toggleWatchlist();
-                            }}
-                        >
-                            <span
-                                className="material-symbols-outlined player-icon-sm"
-                                style={{
-                                    fontVariationSettings: inWatchlist
-                                        ? "'FILL' 1"
-                                        : "'FILL' 0",
-                                }}
-                            >
-                                {inWatchlist
-                                    ? "bookmark_added"
-                                    : "bookmark_add"}
-                            </span>
-                        </button>
-                    </div>
-
-                    {/* Center: Play button */}
+                    {/* Center: Play Controls */}
                     <div className="player-center-play">
-                        <div className="player-play-circle">
-                            <span className="material-symbols-outlined">
-                                play_arrow
-                            </span>
-                        </div>
-                        {resumeTime && resumeTime > 10 && (
-                            <span className="player-resume-label">
-                                Resume from {formatTime(resumeTime)}
-                            </span>
+                        {!resumeTime || resumeTime <= 10 || !vkDuration ? (
+                            <div className="player-play-circle">
+                                <span className="material-symbols-outlined">
+                                    play_arrow
+                                </span>
+                            </div>
+                        ) : (
+                            <div
+                                className="player-splash-controls animate-fade-in-up"
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                <h3 className="player-splash-title">
+                                    Ready to continue?
+                                </h3>
+                                <div className="player-splash-seek">
+                                    <span className="player-splash-time">
+                                        {formatTime(resumeTime)}
+                                    </span>
+                                    <input
+                                        title="Seek Position"
+                                        type="range"
+                                        min="0"
+                                        max={vkDuration}
+                                        value={resumeTime}
+                                        onChange={(e) => {
+                                            const newTime = parseInt(
+                                                e.target.value,
+                                            );
+                                            setResumeTime(newTime);
+                                            StorageService.saveWatchProgress(
+                                                movie.id,
+                                                newTime,
+                                            );
+                                        }}
+                                        className="player-splash-slider"
+                                    />
+                                    <span className="player-splash-time">
+                                        {formatTime(vkDuration)}
+                                    </span>
+                                </div>
+                                <div className="player-splash-buttons">
+                                    <button
+                                        className="btn btn-glass player-splash-btn"
+                                        onClick={() => {
+                                            StorageService.saveWatchProgress(
+                                                movie.id,
+                                                0,
+                                            );
+                                            setResumeTime(0);
+                                            setPlaying(true);
+                                        }}
+                                    >
+                                        <span className="material-symbols-outlined">
+                                            replay
+                                        </span>
+                                        Restart
+                                    </button>
+                                    <button
+                                        className="btn btn-primary player-splash-btn"
+                                        onClick={() => setPlaying(true)}
+                                    >
+                                        <span className="material-symbols-outlined">
+                                            play_arrow
+                                        </span>
+                                        Resume
+                                    </button>
+                                </div>
+                            </div>
                         )}
                     </div>
 
@@ -421,20 +407,9 @@ export default function MovieViewer() {
                     <div
                         className={`player-progress-pill ${!controlsVisible ? "controls-hidden" : ""}`}
                     >
-                        <div className="pill-track">
-                            <div
-                                className="pill-fill"
-                                style={{ width: `${progressPercent}%` }}
-                            />
-                        </div>
                         <div className="pill-time">
-                            <span className="material-symbols-outlined pill-icon">
-                                {isPaused ? "pause_circle" : "play_circle"}
-                            </span>
-                            <span>{formatTime(currentTime)}</span>
-                            <span className="pill-separator">/</span>
-                            <span className="pill-duration">
-                                {duration > 0 ? formatTime(duration) : "--:--"}
+                            <span className="pill-time-text">
+                                Having Playback Issues?
                             </span>
                             <button
                                 className="pill-refresh-btn"
@@ -443,6 +418,15 @@ export default function MovieViewer() {
                             >
                                 <span className="material-symbols-outlined pill-refresh-icon">
                                     refresh
+                                </span>
+                            </button>
+                            <button
+                                className="pill-ticket-btn"
+                                onClick={() => setIsFeedbackOpen(true)}
+                                title="Submit Feedback"
+                            >
+                                <span className="material-symbols-outlined pill-ticket-icon">
+                                    feedback
                                 </span>
                             </button>
                         </div>
@@ -486,6 +470,44 @@ export default function MovieViewer() {
                             {movie.overview ||
                                 "No synopsis available for this title."}
                         </p>
+
+                        {/* Cast Section */}
+                        {cast.length > 0 && (
+                            <div className="viewer-cast-section animate-fade-in-up">
+                                <h3 className="viewer-cast-title">Top Cast</h3>
+                                <div className="viewer-cast-carousel">
+                                    {cast.map((actor) => (
+                                        <Link
+                                            key={actor.id}
+                                            to={`/search?q=${encodeURIComponent(actor.name)}&actor=${actor.id}`}
+                                            className="viewer-cast-card glass-panel group"
+                                        >
+                                            <div className="viewer-cast-avatar">
+                                                {actor.profile_path ? (
+                                                    <img
+                                                        src={`https://image.tmdb.org/t/p/w200${actor.profile_path}`}
+                                                        alt={actor.name}
+                                                        loading="lazy"
+                                                    />
+                                                ) : (
+                                                    <span className="material-symbols-outlined viewer-cast-fallback">
+                                                        person
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <div className="viewer-cast-info">
+                                                <p className="viewer-cast-name">
+                                                    {actor.name}
+                                                </p>
+                                                <p className="viewer-cast-character">
+                                                    {actor.character}
+                                                </p>
+                                            </div>
+                                        </Link>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     {/* Sidebar */}

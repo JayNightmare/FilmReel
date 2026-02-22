@@ -7,19 +7,41 @@ import "../styles/Category.css";
 
 export default function SearchResults() {
     const [searchParams] = useSearchParams();
+
     const query = searchParams.get("q") || "";
+    const with_genres = searchParams.get("with_genres") || "";
+    const with_people = searchParams.get("with_people") || "";
+    const primary_release_year = searchParams.get("primary_release_year") || "";
+    const vote_average_gte = searchParams.get("vote_average.gte") || "";
+
+    const hasAdvanced = Boolean(
+        with_genres || with_people || primary_release_year || vote_average_gte,
+    );
+
     const [movies, setMovies] = useState<Movie[]>([]);
     const [loading, setLoading] = useState(true);
     const [page, setPage] = useState(1);
     const [loadingMore, setLoadingMore] = useState(false);
     const [hasMore, setHasMore] = useState(true);
+
     const seenIds = useRef<Set<number>>(new Set());
     const sentinelRef = useRef<HTMLDivElement | null>(null);
     const observerRef = useRef<IntersectionObserver | null>(null);
 
+    // Build filter config
+    const getActiveFilters = () => {
+        const filters: Record<string, string> = { sort_by: "popularity.desc" };
+        if (with_genres) filters.with_genres = with_genres;
+        if (with_people) filters.with_people = with_people;
+        if (primary_release_year)
+            filters.primary_release_year = primary_release_year;
+        if (vote_average_gte) filters["vote_average.gte"] = vote_average_gte;
+        return filters;
+    };
+
     useEffect(() => {
-        const search = async () => {
-            if (!query.trim()) {
+        const fetchResults = async () => {
+            if (!query.trim() && !hasAdvanced) {
                 setMovies([]);
                 setLoading(false);
                 return;
@@ -31,14 +53,25 @@ export default function SearchResults() {
             setHasMore(true);
 
             try {
-                const results = await APIService.searchMovies(query, 1);
+                let results: Movie[] = [];
+                if (query.trim()) {
+                    results = await APIService.searchMovies(query, 1);
+                } else if (hasAdvanced) {
+                    results = await APIService.discoverMovies(
+                        getActiveFilters(),
+                        1,
+                    );
+                }
+
                 const unique = results.filter((m) => {
                     if (seenIds.current.has(m.id)) return false;
                     seenIds.current.add(m.id);
                     return true;
                 });
+
                 setMovies(unique);
                 setPage(2);
+                if (results.length === 0) setHasMore(false);
             } catch (err) {
                 console.error("Search failed:", err);
             } finally {
@@ -46,14 +79,26 @@ export default function SearchResults() {
             }
         };
 
-        search();
-    }, [query]);
+        fetchResults();
+    }, [
+        query,
+        hasAdvanced,
+        with_genres,
+        with_people,
+        primary_release_year,
+        vote_average_gte,
+    ]);
 
     const attachObserver = useCallback(() => {
         if (observerRef.current) observerRef.current.disconnect();
         observerRef.current = new IntersectionObserver(
             (entries) => {
-                if (entries[0].isIntersecting && hasMore && !loadingMore) {
+                if (
+                    entries[0].isIntersecting &&
+                    hasMore &&
+                    !loadingMore &&
+                    !loading
+                ) {
                     loadMore();
                 }
             },
@@ -61,19 +106,27 @@ export default function SearchResults() {
         );
         if (sentinelRef.current)
             observerRef.current.observe(sentinelRef.current);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [hasMore, loadingMore]);
+    }, [hasMore, loadingMore, loading]);
 
     useEffect(() => {
-        if (!loading) attachObserver();
+        attachObserver();
         return () => observerRef.current?.disconnect();
-    }, [attachObserver, loading]);
+    }, [attachObserver]);
 
     const loadMore = async () => {
-        if (loadingMore || !hasMore || !query.trim()) return;
+        if (loadingMore || !hasMore) return;
         setLoadingMore(true);
         try {
-            const results = await APIService.searchMovies(query, page);
+            let results: Movie[] = [];
+            if (query.trim()) {
+                results = await APIService.searchMovies(query, page);
+            } else if (hasAdvanced) {
+                results = await APIService.discoverMovies(
+                    getActiveFilters(),
+                    page,
+                );
+            }
+
             if (results.length === 0) {
                 setHasMore(false);
             } else {
@@ -117,14 +170,16 @@ export default function SearchResults() {
         <div className="category-page animate-in fade-in">
             <div className="category-header">
                 <h1 className="category-title">
-                    {query ? `Results for "${query}"` : "Search"}
+                    {query
+                        ? `Results for "${query}"`
+                        : hasAdvanced
+                          ? "Advanced Search Results"
+                          : "Search"}
                 </h1>
                 <p className="category-description">
                     {movies.length > 0
-                        ? `Found ${movies.length}+ movies matching your search.`
-                        : query
-                          ? "No movies found. Try a different search term."
-                          : "Use the search bar above to find movies."}
+                        ? `Found ${movies.length}+ movies matching your criteria.`
+                        : "No movies found. Try different filters or search terms."}
                 </p>
             </div>
 

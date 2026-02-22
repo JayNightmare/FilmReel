@@ -1,0 +1,256 @@
+/* MoodSurvey.css */
+.mood-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 64px 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 40px;
+    min-height: calc(100vh - 72px);
+    justify-content: center;
+}
+
+/* Tracker */
+.mood-tracker {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: center;
+}
+
+.mood-tracker-text {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.mood-tracker-bar {
+    width: 100%;
+    max-width: 400px;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 9999px;
+    overflow: hidden;
+}
+
+.mood-tracker-fill {
+    height: 100%;
+    background: var(--accent-purple);
+    transition: width 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+/* Question Card */
+.mood-question-card {
+    width: 100%;
+    padding: 48px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 40px;
+    text-align: center;
+}
+
+.mood-question-title {
+    font-size: clamp(2rem, 4vw, 2.5rem);
+    font-weight: 800;
+    color: white;
+    line-height: 1.2;
+}
+
+.mood-options-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    width: 100%;
+}
+
+.mood-option-btn {
+    padding: 24px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: white;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border-radius: 16px;
+}
+
+.mood-option-btn:hover {
+    background: rgba(127, 19, 236, 0.2);
+    border-color: rgba(127, 19, 236, 0.6);
+    transform: translateY(-4px) scale(1.02);
+    box-shadow: 0 10px 30px rgba(127, 19, 236, 0.2);
+}
+
+/* Analyzing Screen */
+.mood-analyzing-card {
+    padding: 64px 48px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
+    width: 100%;
+    max-width: 500px;
+    text-align: center;
+}
+
+.mood-spinner {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    border: 4px solid rgba(127, 19, 236, 0.2);
+    border-top-color: var(--accent-purple);
+    animation: spin 1s linear infinite, pulse-glow 2s ease-in-out infinite;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes pulse-glow {
+
+    0%,
+    100% {
+        box-shadow: 0 0 20px rgba(127, 19, 236, 0.2);
+    }
+
+    50% {
+        box-shadow: 0 0 40px rgba(127, 19, 236, 0.6);
+    }
+}
+
+.mood-analyzing-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: white;
+}
+
+.mood-progress-track {
+    width: 100%;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 9999px;
+    overflow: hidden;
+}
+
+.mood-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent-purple), #a855f7);
+    transition: width 0.2s linear;
+}
+
+.mood-progress-text {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    font-variant-numeric: tabular-nums;
+}
+
+/* Results Header */
+.mood-results-header {
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    max-width: 600px;
+}
+
+.mood-results-title {
+    font-size: clamp(2.5rem, 5vw, 3.5rem);
+    font-weight: 900;
+    color: white;
+    background: linear-gradient(135deg, #fff 0%, #a855f7 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.mood-results-subtitle {
+    font-size: 1.1rem;
+    color: var(--text-secondary);
+    line-height: 1.6;
+}
+
+.mood-results-actions {
+    display: flex;
+    gap: 16px;
+    margin-top: 24px;
+}
+
+.mood-btn-primary,
+.mood-btn-secondary {
+    padding: 14px 32px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    border-radius: 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: none;
+    text-decoration: none;
+}
+
+.mood-btn-primary {
+    background: var(--accent-purple);
+    color: white;
+}
+
+.mood-btn-primary:hover {
+    background: var(--accent-purple-light);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 20px rgba(127, 19, 236, 0.4);
+}
+
+.mood-btn-secondary {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+}
+
+.mood-btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.15);
+    transform: translateY(-2px);
+}
+
+/* Results Grid */
+.mood-results-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 24px;
+    width: 100%;
+    /* Note: Since mood-container handles the main centering, removing max-width constraint
+       allows the grid to naturally fill the available width similar to Home.tsx grids */
+}
+
+/* Ensure wide wrapper for the grid when showing results */
+.mood-container.wide-mode {
+    max-width: 1200px;
+}
+
+.mood-no-results {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    padding: 64px 24px;
+    color: var(--text-secondary);
+    text-align: center;
+    font-size: 1.1rem;
+}
+
+.mood-no-results .material-symbols-outlined {
+    font-size: 64px;
+    color: rgba(255, 255, 255, 0.2);
+}

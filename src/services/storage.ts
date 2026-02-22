@@ -17,6 +17,11 @@ export interface WatchlistItem {
     addedAt: string; // ISO String
 }
 
+export interface WatchProgress {
+    movieId: number;
+    currentTime: number;
+}
+
 const PROFILE_KEY = "filmreel_user_profile";
 const MOOD_HISTORY_KEY = "filmreel_mood_history";
 const WATCHLIST_KEY = "filmreel_watchlist";
@@ -24,7 +29,7 @@ const WATCH_PROGRESS_KEY = "filmreel_watch_progress";
 
 // Default Profile
 const defaultProfile: UserProfile = {
-    displayName: "",
+    displayName: "CinemaLover99",
     avatarBase64: null,
     favoriteGenreId: null,
 };
@@ -42,6 +47,7 @@ export const StorageService = {
 
     saveProfile: (profile: UserProfile): void => {
         localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
+        StorageService.dispatchStorageEvent(PROFILE_KEY);
     },
 
     // --- Mood History Management ---
@@ -77,12 +83,13 @@ export const StorageService = {
         poster_path: string | null;
     }): void => {
         const list = StorageService.getWatchlist();
-        if (list.some((item) => item.id === movie.id)) return; // Already in list
+        if (list.some((item) => item.id === movie.id)) return;
         const item: WatchlistItem = {
             ...movie,
             addedAt: new Date().toISOString(),
         };
         localStorage.setItem(WATCHLIST_KEY, JSON.stringify([item, ...list]));
+        StorageService.dispatchStorageEvent(WATCHLIST_KEY);
     },
 
     removeFromWatchlist: (movieId: number): void => {
@@ -90,6 +97,7 @@ export const StorageService = {
             (item) => item.id !== movieId,
         );
         localStorage.setItem(WATCHLIST_KEY, JSON.stringify(list));
+        StorageService.dispatchStorageEvent(WATCHLIST_KEY);
     },
 
     isInWatchlist: (movieId: number): boolean => {
@@ -101,12 +109,32 @@ export const StorageService = {
     // --- Watch Progress ---
     saveWatchProgress: (movieId: number, currentTime: number): void => {
         try {
+            // FilmReel Storage
             const data = localStorage.getItem(WATCH_PROGRESS_KEY);
             const progress: Record<string, number> = data
                 ? JSON.parse(data)
                 : {};
             progress[String(movieId)] = Math.floor(currentTime);
             localStorage.setItem(WATCH_PROGRESS_KEY, JSON.stringify(progress));
+            StorageService.dispatchStorageEvent(WATCH_PROGRESS_KEY);
+
+            // VidKing Storage Sync
+            const vkData = localStorage.getItem("watch_progress");
+            if (vkData) {
+                const vkProgress = JSON.parse(vkData);
+                const vkMovie = vkProgress[String(movieId)];
+                if (vkMovie && vkMovie.progress) {
+                    vkMovie.progress.watched = currentTime;
+                    vkMovie.progress.percent =
+                        (currentTime / vkMovie.progress.duration) * 100;
+                    vkMovie.progress.last_watched = Date.now();
+                    vkMovie.last_updated = Date.now();
+                    localStorage.setItem(
+                        "watch_progress",
+                        JSON.stringify(vkProgress),
+                    );
+                }
+            }
         } catch {
             /* storage full — silently fail */
         }
@@ -123,6 +151,18 @@ export const StorageService = {
         }
     },
 
+    getVidKingDuration: (movieId: number): number | null => {
+        try {
+            const data = localStorage.getItem("watch_progress");
+            if (!data) return null;
+            const progress = JSON.parse(data);
+            const vkMovie = progress[String(movieId)];
+            return vkMovie?.progress?.duration || null;
+        } catch {
+            return null;
+        }
+    },
+
     // Helper to convert Image File -> Base64 for avatar
     fileToBase64: (file: File): Promise<string> => {
         return new Promise((resolve, reject) => {
@@ -131,5 +171,40 @@ export const StorageService = {
             reader.onload = () => resolve(reader.result as string);
             reader.onerror = (error) => reject(error);
         });
+    },
+
+    getAllWatchProgress: (): WatchProgress[] => {
+        try {
+            const data = localStorage.getItem(WATCH_PROGRESS_KEY);
+            if (!data) return [];
+            const progress: Record<string, number> = JSON.parse(data);
+            return Object.entries(progress)
+                .filter(([, time]) => time > 10)
+                .map(([id, time]) => ({
+                    movieId: parseInt(id, 10),
+                    currentTime: time,
+                }));
+        } catch {
+            return [];
+        }
+    },
+
+    removeWatchProgress: (movieId: number): void => {
+        try {
+            const data = localStorage.getItem(WATCH_PROGRESS_KEY);
+            if (!data) return;
+            const progress: Record<string, number> = JSON.parse(data);
+            delete progress[String(movieId)];
+            localStorage.setItem(WATCH_PROGRESS_KEY, JSON.stringify(progress));
+            StorageService.dispatchStorageEvent(WATCH_PROGRESS_KEY);
+        } catch {
+            /* silently fail */
+        }
+    },
+
+    dispatchStorageEvent: (key: string): void => {
+        window.dispatchEvent(
+            new CustomEvent("filmreel-storage", { detail: { key } }),
+        );
     },
 };

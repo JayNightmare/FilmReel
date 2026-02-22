@@ -3,81 +3,112 @@ import { StorageService } from "../services/storage";
 import { APIService } from "../services/api";
 import type { Movie } from "../services/api";
 import { MovieCard } from "../components/MovieCard";
+import "../styles/MoodSurvey.css";
 
-// Weighted answers mapping to TMDB Action(28), Comedy(35), Drama(18), Sci-Fi(878), Horror(27), Romance(10749)
-const QUESTIONS = [
+// Base Questions
+const BASE_QUESTIONS = [
     {
-        question: "How are you feeling today?",
+        question: "How are you feeling?",
         options: [
-            { text: "Energetic and ready to go", weights: { 28: 3, 878: 2 } },
-            { text: "Need a good laugh", weights: { 35: 4 } },
-            {
-                text: "A bit thoughtful or melancholic",
-                weights: { 18: 4, 10749: 2 },
-            },
-            { text: "Want to be thrilled", weights: { 27: 4, 878: 1 } },
+            { text: "Energetic", weights: { 28: 3, 878: 2 } }, // Action, Sci-Fi
+            { text: "Chill", weights: { 35: 3, 10749: 2 } }, // Comedy, Romance
+            { text: "Adventurous", weights: { 12: 4, 14: 3 } }, // Adventure, Fantasy
+            { text: "Melancholic", weights: { 18: 4 } }, // Drama
         ],
     },
     {
-        question: "What's your ideal setting right now?",
+        question: "Ideal setting?",
         options: [
-            { text: "Outer space or the future", weights: { 878: 5 } },
-            { text: "A bustling modern city", weights: { 28: 2, 35: 1 } },
-            { text: "A quiet, cozy room", weights: { 18: 3, 10749: 3 } },
-            { text: "A haunted mansion", weights: { 27: 5 } },
+            { text: "Space", weights: { 878: 4 } }, // SciFi
+            { text: "City", weights: { 28: 2, 80: 3 } }, // Action, Crime
+            { text: "Nature", weights: { 12: 3, 14: 2 } }, // Adventure, Fantasy
+            { text: "Anywhere", weights: { 35: 2, 10749: 2 } }, // Comedy, Romance
         ],
     },
     {
-        question: "Choose a snack companion:",
+        question: "Desired impact?",
         options: [
-            {
-                text: "Popcorn (The classic experience)",
-                weights: { 28: 2, 35: 2 },
-            },
-            { text: "Ice Cream (Comforting)", weights: { 18: 3, 10749: 3 } },
-            { text: "Leftover Pizza (Casual)", weights: { 35: 3 } },
-            { text: "Candy (High sugar rush)", weights: { 878: 2, 27: 2 } },
+            { text: "Laughter", weights: { 35: 5 } }, // Comedy
+            { text: "Tears", weights: { 18: 4, 10749: 3 } }, // Drama, Romance
+            { text: "Adrenaline", weights: { 28: 4, 53: 3 } }, // Action, Thriller
+            { text: "Fear", weights: { 27: 5 } }, // Horror
+        ],
+    },
+];
+
+// Extended Questions for deeper keyword/sentiment matching
+const EXT_QUESTIONS = [
+    {
+        question: "Pacing preference?",
+        options: [
+            { text: "Fast", keyword: "fast" },
+            { text: "Slow-burn", keyword: "slow" },
+            { text: "Steady", keyword: "steady" },
         ],
     },
     {
-        question: "How much time do you have?",
+        question: "Tone?",
         options: [
-            { text: "Just a quick watch", weights: { 35: 3, 27: 1 } },
-            { text: "I have the whole evening", weights: { 18: 2, 878: 2 } },
-            { text: "Depends how good it is", weights: { 28: 2 } },
-            { text: "Time is an illusion", weights: { 878: 4 } },
+            { text: "Dark", keyword: "dark" },
+            { text: "Lighthearted", keyword: "light" },
+            { text: "Gritty", keyword: "gritty" },
         ],
     },
     {
-        question: "What kind of ending do you want?",
+        question: "Ending vibe?",
         options: [
-            { text: "Explosions and victory", weights: { 28: 4 } },
-            { text: "Tears of joy or sadness", weights: { 18: 4, 10749: 3 } },
-            { text: "A complete mind-bender", weights: { 878: 4, 27: 2 } },
-            { text: "A good laugh", weights: { 35: 5 } },
+            { text: "Twist", keyword: "twist" },
+            { text: "Happy", keyword: "happy" },
+            { text: "Ambiguous", keyword: "ambiguous" },
         ],
     },
 ];
 
 const GENRE_NAMES: Record<number, string> = {
     28: "Action",
+    12: "Adventure",
+    16: "Animation",
     35: "Comedy",
+    80: "Crime",
+    99: "Documentary",
     18: "Drama",
-    878: "Sci-Fi",
+    10751: "Family",
+    14: "Fantasy",
+    36: "History",
     27: "Horror",
+    10402: "Music",
+    9648: "Mystery",
     10749: "Romance",
+    878: "Science Fiction",
+    10770: "TV Movie",
+    53: "Thriller",
+    10752: "War",
+    37: "Western",
 };
 
 export default function MoodSurvey() {
     const [step, setStep] = useState(0);
     const [scores, setScores] = useState<Record<number, number>>({});
+    const [keywords, setKeywords] = useState<string[]>([]);
+
+    // UI States
+    const [isAnalyzing, setIsAnalyzing] = useState(false);
+    const [analyzingProgress, setAnalyzingProgress] = useState(0);
+    const [analyzingText, setAnalyzingText] = useState("");
+
+    const [showResults, setShowResults] = useState(false);
+    const [isExtendedMode, setIsExtendedMode] = useState(false);
+
+    // Data States
+    const [baseMovies, setBaseMovies] = useState<Movie[]>([]);
     const [resultMovies, setResultMovies] = useState<Movie[]>([]);
     const [winningGenre, setWinningGenre] = useState<{
         id: number;
         name: string;
     } | null>(null);
 
-    const handleSelect = (weights: Partial<Record<number, number>>) => {
+    // -- Base Survey Logic --
+    const handleSelectBase = (weights: Partial<Record<number, number>>) => {
         const newScores = { ...scores };
         Object.entries(weights).forEach(([genreId, weight]) => {
             if (weight !== undefined) {
@@ -87,16 +118,79 @@ export default function MoodSurvey() {
         });
         setScores(newScores);
 
-        if (step < QUESTIONS.length - 1) {
-            setStep(step + 1);
+        if (step < BASE_QUESTIONS.length - 1) {
+            setStep((s) => s + 1);
         } else {
-            calculateResult(newScores);
+            // Trigger calculation
+            simulateAnalysis(newScores, false);
         }
     };
 
-    const calculateResult = async (finalScores: Record<number, number>) => {
+    // -- Extended Survey Logic --
+    const handleSelectExt = (keyword: string) => {
+        const newKeywords = [...keywords, keyword];
+        setKeywords(newKeywords);
+
+        if (step < BASE_QUESTIONS.length + EXT_QUESTIONS.length - 1) {
+            setStep((s) => s + 1);
+        } else {
+            // Trigger secondary calculation
+            simulateAnalysis(scores, true, newKeywords);
+        }
+    };
+
+    // -- Analysis / Loading Sequence --
+    const simulateAnalysis = (
+        finalScores: Record<number, number>,
+        isExt: boolean,
+        selectedKeywords: string[] = [],
+    ) => {
+        setStep(
+            isExt
+                ? BASE_QUESTIONS.length + EXT_QUESTIONS.length
+                : BASE_QUESTIONS.length,
+        );
+        setShowResults(false);
+        setIsAnalyzing(true);
+        setAnalyzingProgress(0);
+        setAnalyzingText(
+            isExt ? "Cross-referencing reviews..." : "Analyzing vibe inputs...",
+        );
+
+        const duration = Math.floor(Math.random() * 3000) + 2000; // 2-5 seconds
+        const steps = 20;
+        const intervalMs = duration / steps;
+        let currentStep = 0;
+
+        const timer = setInterval(() => {
+            currentStep++;
+            setAnalyzingProgress(Math.floor((currentStep / steps) * 100));
+
+            if (currentStep === Math.floor(steps * 0.5)) {
+                setAnalyzingText("Consulting the film gods...");
+            }
+            if (currentStep === Math.floor(steps * 0.8)) {
+                setAnalyzingText("Formatting recommendations...");
+            }
+
+            if (currentStep >= steps) {
+                clearInterval(timer);
+                setAnalyzingText("Thinking...");
+
+                // Keep "Thinking..." for 1 second, then process results
+                setTimeout(() => {
+                    if (isExt) {
+                        processExtendedResults(selectedKeywords);
+                    } else {
+                        processBaseResults(finalScores);
+                    }
+                }, 1000);
+            }
+        }, intervalMs);
+    };
+
+    const processBaseResults = async (finalScores: Record<number, number>) => {
         try {
-            // Find highest scoring genre
             let maxScore = -1;
             let topGenre = 28; // fallback action
 
@@ -107,249 +201,212 @@ export default function MoodSurvey() {
                 }
             });
 
+            const genreName = GENRE_NAMES[topGenre] || "Movies";
             const movies = await APIService.getMoviesByGenre(topGenre);
-            setResultMovies(movies);
-            setWinningGenre({
-                id: topGenre,
-                name: GENRE_NAMES[topGenre] || "Movies",
-            });
 
-            // Save to history
+            setBaseMovies(movies);
+            setResultMovies(movies);
+            setWinningGenre({ id: topGenre, name: genreName });
+
             StorageService.addMoodResult({
                 date: new Date().toISOString(),
                 recommendedGenreId: topGenre,
-                moodLabel: `Feeling ${GENRE_NAMES[topGenre] || "Adventurous"}`,
+                moodLabel: `Feeling ${genreName}`,
             });
 
-            setStep(QUESTIONS.length);
+            setIsAnalyzing(false);
+            setShowResults(true);
         } catch (e) {
             console.error(e);
+            setIsAnalyzing(false);
         }
+    };
+
+    const processExtendedResults = async (currentKeywords: string[]) => {
+        // Simple sentiment matching: we take the base movies and try to fetch reviews
+        // Since fetching reviews for 20 movies takes a while, we take top 10 to speed up
+        try {
+            const candidates = baseMovies.slice(0, 10);
+            const matches: { movie: Movie; score: number }[] = [];
+
+            for (const m of candidates) {
+                const reviews = await APIService.getMovieReviews(m.id);
+                const reviewText = reviews
+                    .map((r) => r.content.toLowerCase())
+                    .join(" ");
+
+                let score = 0;
+                currentKeywords.forEach((kw) => {
+                    if (reviewText.includes(kw.toLowerCase())) {
+                        score++;
+                    }
+                });
+
+                matches.push({ movie: m, score });
+            }
+
+            // Sort by sentiment match score, fallback to popularity if 0
+            matches.sort((a, b) => b.score - a.score);
+
+            // Re-order the results based on matches
+            const newResults = [
+                ...matches.map((m) => m.movie),
+                ...baseMovies.slice(10), // append rest
+            ];
+
+            setResultMovies(newResults);
+            setIsAnalyzing(false);
+            setShowResults(true);
+        } catch (e) {
+            console.error(e);
+            setIsAnalyzing(false);
+            setShowResults(true); // Fallback to base results
+        }
+    };
+
+    const extendSurvey = () => {
+        setIsExtendedMode(true);
+        setStep(BASE_QUESTIONS.length);
+        setShowResults(false);
     };
 
     const reset = () => {
         setStep(0);
         setScores({});
+        setKeywords([]);
+        setIsExtendedMode(false);
+        setShowResults(false);
+        setIsAnalyzing(false);
+        setBaseMovies([]);
         setResultMovies([]);
         setWinningGenre(null);
     };
 
-    // --- RESULTS VIEW ---
-    if (step === QUESTIONS.length) {
-        return (
-            <div
-                className="animate-in fade-in"
-                style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "40px",
-                }}
-            >
-                <div
-                    style={{
-                        textAlign: "center",
-                        maxWidth: "600px",
-                        margin: "0 auto",
-                        padding: "40px",
-                    }}
-                    className="glass-panel"
-                >
-                    <div
-                        style={{
-                            display: "inline-flex",
-                            padding: "16px",
-                            background: "var(--accent-purple)",
-                            borderRadius: "50%",
-                            marginBottom: "24px",
-                            boxShadow: "0 0 30px var(--accent-purple-glow)",
-                        }}
-                    >
-                        <span
-                            className="material-symbols-outlined"
-                            style={{ fontSize: "40px", color: "white" }}
-                        >
-                            auto_awesome
-                        </span>
-                    </div>
-                    <h1 style={{ fontSize: "2.5rem", marginBottom: "16px" }}>
-                        Your Vibe is{" "}
-                        <span className="text-gradient hover:text-white transition-colors cursor-default">
-                            {winningGenre?.name}
-                        </span>
-                    </h1>
-                    <p
-                        style={{
-                            color: "var(--text-secondary)",
-                            fontSize: "1.1rem",
-                            marginBottom: "32px",
-                        }}
-                    >
-                        We've curated these movies specifically based on your
-                        current mood. Grab your snacks!
-                    </p>
-                    <button onClick={reset} className="btn btn-glass">
-                        <span
-                            className="material-symbols-outlined"
-                            style={{ fontSize: "18px" }}
-                        >
-                            autorenew
-                        </span>{" "}
-                        Take Survey Again
-                    </button>
-                </div>
+    // --- RENDER LOGIC ---
 
-                <div>
-                    <h2 style={{ fontSize: "1.5rem", marginBottom: "20px" }}>
-                        Recommended for you
-                    </h2>
-                    <div
-                        style={{
-                            display: "grid",
-                            gridTemplateColumns:
-                                "repeat(auto-fill, minmax(200px, 1fr))",
-                            gap: "24px",
-                        }}
-                    >
-                        {resultMovies.slice(0, 10).map((movie) => (
-                            <MovieCard key={`mood-${movie.id}`} movie={movie} />
-                        ))}
+    // 1. Analyzing Screen
+    if (isAnalyzing) {
+        return (
+            <div className="mood-container">
+                <div className="mood-analyzing-card glass-panel">
+                    <div className="mood-spinner"></div>
+                    <h2 className="mood-analyzing-title">{analyzingText}</h2>
+                    <div className="mood-progress-track">
+                        <div
+                            className="mood-progress-fill"
+                            style={{ width: `${analyzingProgress}%` }}
+                        />
                     </div>
+                    <p className="mood-progress-text">{analyzingProgress}%</p>
                 </div>
             </div>
         );
     }
 
-    // --- SURVEY VIEW ---
-    const currentQ = QUESTIONS[step];
-    const progress = ((step + 1) / QUESTIONS.length) * 100;
+    // 2. Results Screen
+    if (showResults) {
+        return (
+            <div className={`mood-container ${showResults ? "wide-mode" : ""}`}>
+                <div className="mood-results-header">
+                    <h1 className="mood-results-title">
+                        {isExtendedMode
+                            ? "Your Perfect Match"
+                            : `The vibe is ${winningGenre?.name}`}
+                    </h1>
+                    <p className="mood-results-subtitle">
+                        {isExtendedMode
+                            ? "We've fine-tuned these recommendations based on reviewer sentiments."
+                            : "Here are some top picks based on your mood. Want even more specific results?"}
+                    </p>
+                    <div className="mood-results-actions">
+                        {!isExtendedMode && (
+                            <button
+                                onClick={extendSurvey}
+                                className="mood-btn-primary"
+                            >
+                                <span className="material-symbols-outlined">
+                                    tune
+                                </span>
+                                Extend Survey
+                            </button>
+                        )}
+                        <button onClick={reset} className="mood-btn-secondary">
+                            <span className="material-symbols-outlined">
+                                restart_alt
+                            </span>
+                            Start Over
+                        </button>
+                    </div>
+                </div>
+
+                {resultMovies.length > 0 ? (
+                    <div className="mood-results-grid">
+                        {resultMovies.map((m) => (
+                            <MovieCard key={m.id} movie={m} />
+                        ))}
+                    </div>
+                ) : (
+                    <div className="mood-no-results">
+                        <span className="material-symbols-outlined">
+                            sentiment_dissatisfied
+                        </span>
+                        <p>
+                            No matches found. Try extending the survey or
+                            starting over.
+                        </p>
+                    </div>
+                )}
+            </div>
+        );
+    }
+
+    // 3. Question Screen
+    const isExt = step >= BASE_QUESTIONS.length;
+    const currentList = isExt ? EXT_QUESTIONS : BASE_QUESTIONS;
+    const currentQIdx = isExt ? step - BASE_QUESTIONS.length : step;
+
+    // Safety check
+    if (currentQIdx < 0 || currentQIdx >= currentList.length) {
+        return null;
+    }
+
+    const { question, options } = currentList[currentQIdx];
+    const totalSteps = isExtendedMode
+        ? BASE_QUESTIONS.length + EXT_QUESTIONS.length
+        : BASE_QUESTIONS.length;
+    const displayStep = step + 1;
+    const progressPercent = (displayStep / totalSteps) * 100;
 
     return (
-        <div
-            style={{
-                maxWidth: "800px",
-                margin: "0 auto",
-                display: "flex",
-                flexDirection: "column",
-                height: "100%",
-                justifyContent: "center",
-            }}
-        >
-            <div style={{ textAlign: "center", marginBottom: "60px" }}>
-                <h1 style={{ fontSize: "3rem", marginBottom: "16px" }}>
-                    Mood Discovery
-                </h1>
-                <p
-                    style={{
-                        color: "var(--text-secondary)",
-                        fontSize: "1.1rem",
-                    }}
-                >
-                    Answer {QUESTIONS.length} quick questions to find the
-                    perfect movie.
-                </p>
-            </div>
-
-            <div className="glass-panel" style={{ padding: "40px" }}>
-                {/* Progress Bar */}
-                <div
-                    style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        marginBottom: "16px",
-                        color: "var(--text-secondary)",
-                        fontWeight: 600,
-                    }}
-                >
-                    <span>
-                        Question {step + 1} of {QUESTIONS.length}
-                    </span>
-                    <span>{Math.round(progress)}%</span>
+        <div className="mood-container">
+            <div className="mood-tracker">
+                <div className="mood-tracker-text">
+                    Question {displayStep} of {totalSteps}
                 </div>
-                <div
-                    style={{
-                        width: "100%",
-                        height: "8px",
-                        background: "rgba(255,255,255,0.1)",
-                        borderRadius: "100px",
-                        marginBottom: "40px",
-                        overflow: "hidden",
-                    }}
-                >
+                <div className="mood-tracker-bar">
                     <div
-                        style={{
-                            width: `${progress}%`,
-                            height: "100%",
-                            background:
-                                "linear-gradient(90deg, #d08cff, var(--accent-purple))",
-                            transition: "width 0.4s ease",
-                        }}
+                        className="mood-tracker-fill"
+                        style={{ width: `${progressPercent}%` }}
                     />
                 </div>
+            </div>
 
-                {/* Question */}
-                <h2
-                    style={{
-                        fontSize: "2rem",
-                        marginBottom: "32px",
-                        textAlign: "center",
-                    }}
-                >
-                    {currentQ.question}
-                </h2>
-
-                {/* Options */}
-                <div
-                    style={{
-                        display: "grid",
-                        gridTemplateColumns: "1fr 1fr",
-                        gap: "16px",
-                    }}
-                >
-                    {currentQ.options.map((opt, i) => (
+            <div className="mood-question-card glass-panel animate-fade-in-up">
+                <h2 className="mood-question-title">{question}</h2>
+                <div className="mood-options-grid">
+                    {options.map((opt, i) => (
                         <button
                             key={i}
-                            onClick={() => handleSelect(opt.weights)}
-                            className="glass-panel"
-                            style={{
-                                padding: "24px",
-                                textAlign: "left",
-                                fontSize: "1.1rem",
-                                fontWeight: 600,
-                                border: "1px solid rgba(255,255,255,0.1)",
-                                cursor: "pointer",
-                                transition: "all 0.2s ease",
-                                background: "rgba(255,255,255,0.02)",
-                                display: "flex",
-                                justifyContent: "space-between",
-                                alignItems: "center",
-                            }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.borderColor =
-                                    "var(--accent-purple)";
-                                e.currentTarget.style.background =
-                                    "rgba(138,43,226,0.1)";
-                                e.currentTarget.style.transform =
-                                    "translateY(-2px)";
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.borderColor =
-                                    "rgba(255,255,255,0.1)";
-                                e.currentTarget.style.background =
-                                    "rgba(255,255,255,0.02)";
-                                e.currentTarget.style.transform =
-                                    "translateY(0)";
+                            className="mood-option-btn glass-panel"
+                            onClick={() => {
+                                if (isExt) {
+                                    handleSelectExt((opt as any).keyword);
+                                } else {
+                                    handleSelectBase((opt as any).weights);
+                                }
                             }}
                         >
                             {opt.text}
-                            <span
-                                className="material-symbols-outlined"
-                                style={{
-                                    fontSize: "20px",
-                                    color: "var(--accent-purple-light)",
-                                }}
-                            >
-                                arrow_forward
-                            </span>
                         </button>
                     ))}
                 </div>

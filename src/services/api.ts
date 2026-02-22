@@ -19,6 +19,30 @@ export interface Genre {
     name: string;
 }
 
+export interface CastMember {
+    id: number;
+    name: string;
+    character: string;
+    profile_path: string | null;
+    order: number;
+}
+
+export interface Review {
+    id: string;
+    author: string;
+    content: string;
+    author_details: {
+        rating: number | null;
+    };
+}
+
+export interface Person {
+    id: number;
+    name: string;
+    profile_path: string | null;
+    known_for_department: string;
+}
+
 // Function to safely fetch from TMDB
 const fetchTMDB = async <T>(
     endpoint: string,
@@ -93,6 +117,65 @@ export const APIService = {
         const data = await fetchTMDB<{ results: Movie[] }>(
             `/movie/${movieId}/similar`,
         );
+        return data.results;
+    },
+
+    getMovieCredits: async (movieId: number): Promise<CastMember[]> => {
+        const data = await fetchTMDB<{ cast: CastMember[] }>(
+            `/movie/${movieId}/credits`,
+        );
+        return data.cast.sort((a, b) => a.order - b.order);
+    },
+
+    getMovieReviews: async (
+        movieId: number,
+        page: number = 1,
+    ): Promise<Review[]> => {
+        const data = await fetchTMDB<{ results: Review[] }>(
+            `/movie/${movieId}/reviews`,
+            { page: page.toString() },
+        );
+        return data.results;
+    },
+
+    searchPerson: async (query: string): Promise<Person[]> => {
+        const data = await fetchTMDB<{ results: Person[] }>("/search/person", {
+            query,
+        });
+        return data.results;
+    },
+
+    getMoviesByPerson: async (
+        personId: number,
+        page: number = 1,
+    ): Promise<Movie[]> => {
+        const data = await fetchTMDB<{ results: Movie[] }>("/discover/movie", {
+            with_people: personId.toString(),
+            sort_by: "popularity.desc",
+            page: page.toString(),
+        });
+        return data.results;
+    },
+
+    getHiddenGems: async (page: number = 1): Promise<Movie[]> => {
+        const data = await fetchTMDB<{ results: Movie[] }>("/discover/movie", {
+            sort_by: "vote_average.desc",
+            "vote_average.gte": "7",
+            "vote_count.gte": "50",
+            "vote_count.lte": "500",
+            page: page.toString(),
+        });
+        return data.results;
+    },
+
+    discoverMovies: async (
+        filters: Record<string, string>,
+        page: number = 1,
+    ): Promise<Movie[]> => {
+        const data = await fetchTMDB<{ results: Movie[] }>("/discover/movie", {
+            ...filters,
+            page: page.toString(),
+        });
         return data.results;
     },
 };

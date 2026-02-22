@@ -1,7 +1,10 @@
 import { useState, useEffect, useRef } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { StorageService } from "../services/storage";
 import type { UserProfile } from "../services/storage";
+import { APIService } from "../services/api";
+import type { Movie, Person, Genre } from "../services/api";
+import { useStorageSync } from "../hooks/useStorageSync";
 import "../styles/Navbar.css";
 
 interface Notification {
@@ -13,24 +16,17 @@ interface Notification {
 }
 
 export const Navbar = () => {
-    const location = useLocation();
-    const [profile, setProfile] = useState<UserProfile>(() =>
-        StorageService.getProfile(),
+    const profile = useStorageSync<UserProfile>(
+        "filmreel_profile",
+        StorageService.getProfile,
     );
-    const [notifications, setNotifications] = useState<Notification[]>([]);
-    const [showNotifs, setShowNotifs] = useState(false);
-    const [searchQuery, setSearchQuery] = useState("");
-    const dropDownRef = useRef<HTMLDivElement>(null);
-    const navigate = useNavigate();
 
-    // Initial mock notification if empty
-    useEffect(() => {
+    const [notifications, setNotifications] = useState<Notification[]>(() => {
         const stored = localStorage.getItem("notif-film");
         let parsed: Notification[] = [];
         if (stored) {
             parsed = JSON.parse(stored);
         } else {
-            // Seed a welcome notification
             parsed = [
                 {
                     id: "welcome-1",
@@ -43,18 +39,38 @@ export const Navbar = () => {
             ];
             localStorage.setItem("notif-film", JSON.stringify(parsed));
         }
-
-        // Sort newest to oldest
         parsed.sort(
             (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
         );
-        setNotifications(parsed);
-    }, []);
+        return parsed;
+    });
+    const [showNotifs, setShowNotifs] = useState(false);
 
+    // Search State
+    const [searchQuery, setSearchQuery] = useState("");
+    const [suggestions, setSuggestions] = useState<Movie[]>([]);
+    const [showSuggestions, setShowSuggestions] = useState(false);
+    const searchWrapperRef = useRef<HTMLDivElement>(null);
+    const dropDownRef = useRef<HTMLDivElement>(null);
+    const navigate = useNavigate();
+
+    // Advanced Filter State
+    const [showAdvanced, setShowAdvanced] = useState(false);
+    const [allGenres, setAllGenres] = useState<Genre[]>([]);
+
+    // Filter Values
+    const [filterGenres, setFilterGenres] = useState<number[]>([]);
+    const [actorQuery, setActorQuery] = useState("");
+    const [actorSuggestions, setActorSuggestions] = useState<Person[]>([]);
+    const [selectedActor, setSelectedActor] = useState<Person | null>(null);
+    const [filterYear, setFilterYear] = useState<string>("");
+    const [filterScore, setFilterScore] = useState<number>(0);
+
+    // Initial load: Genres
     useEffect(() => {
-        setProfile(StorageService.getProfile());
-    }, [location.pathname]);
-
+        APIService.getGenres().then(setAllGenres).catch(console.error);
+    }, []);
+    // Handle clicks outside dropdowns
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (
@@ -63,15 +79,55 @@ export const Navbar = () => {
             ) {
                 setShowNotifs(false);
             }
+            if (
+                searchWrapperRef.current &&
+                !searchWrapperRef.current.contains(event.target as Node)
+            ) {
+                setShowSuggestions(false);
+                setShowAdvanced(false);
+            }
         };
         document.addEventListener("mousedown", handleClickOutside);
         return () =>
             document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
+    // Debounce Movie Search
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (searchQuery.trim().length >= 2 && !showAdvanced) {
+                APIService.searchMovies(searchQuery)
+                    .then((res) => {
+                        setSuggestions(res.slice(0, 5));
+                        setShowSuggestions(true);
+                    })
+                    .catch(console.error);
+            } else {
+                setSuggestions([]);
+                setShowSuggestions(false);
+            }
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [searchQuery, showAdvanced]);
+
+    // Debounce Actor Search
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (actorQuery.trim().length >= 2 && !selectedActor) {
+                APIService.searchPerson(actorQuery)
+                    .then((res) => {
+                        setActorSuggestions(res.slice(0, 5));
+                    })
+                    .catch(console.error);
+            } else {
+                setActorSuggestions([]);
+            }
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [actorQuery, selectedActor]);
+
     const toggleNotifs = () => {
         if (!showNotifs) {
-            // Mark all as read when opening (or when clicking individual, but simple UX is marking all shown as read)
             const updated = notifications.map((n) => ({ ...n, read: true }));
             setNotifications(updated);
             localStorage.setItem("notif-film", JSON.stringify(updated));
@@ -84,10 +140,34 @@ export const Navbar = () => {
         localStorage.setItem("notif-film", JSON.stringify([]));
     };
 
+    const executeSearch = () => {
+        setShowSuggestions(false);
+        setShowAdvanced(false);
+        if (searchQuery.trim()) {
+            navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+            setSearchQuery("");
+        }
+    };
+
+    const applyAdvancedFilters = () => {
+        setShowAdvanced(false);
+        setShowSuggestions(false);
+        const params = new URLSearchParams();
+        if (filterGenres.length > 0)
+            params.append("with_genres", filterGenres.join(","));
+        if (selectedActor)
+            params.append("with_people", selectedActor.id.toString());
+        if (filterYear) params.append("primary_release_year", filterYear);
+        if (filterScore > 0)
+            params.append("vote_average.gte", filterScore.toString());
+
+        navigate(`/search?${params.toString()}`);
+    };
+
     const unreadCount = notifications.filter((n) => !n.read).length;
 
     return (
-        <header className="glass-panel navbar">
+        <header className="navbar">
             <div className="container navbar-inner">
                 {/* Logo */}
                 <Link to="/" className="nav-logo-link">
@@ -103,10 +183,21 @@ export const Navbar = () => {
                 </Link>
 
                 {/* Desktop Search Bar */}
-                <div className="hidden-md nav-search-container">
+                <div
+                    className="hidden-md nav-search-container"
+                    ref={searchWrapperRef}
+                >
                     <div className="nav-search-input-wrapper">
-                        <div className="nav-search-icon">
-                            <span className="material-symbols-outlined">
+                        <div
+                            className="nav-search-icon"
+                            onClick={executeSearch}
+                            style={{
+                                cursor: "pointer",
+                                pointerEvents: "auto",
+                                zIndex: 2,
+                            }}
+                        >
+                            <span className="material-symbols-outlined nav-search-icon-hover">
                                 search
                             </span>
                         </div>
@@ -116,16 +207,252 @@ export const Navbar = () => {
                             type="text"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
+                            onFocus={() => {
+                                if (suggestions.length > 0 && !showAdvanced)
+                                    setShowSuggestions(true);
+                            }}
                             onKeyDown={(e) => {
-                                if (e.key === "Enter" && searchQuery.trim()) {
-                                    navigate(
-                                        `/search?q=${encodeURIComponent(searchQuery.trim())}`,
-                                    );
-                                    setSearchQuery("");
-                                }
+                                if (e.key === "Enter") executeSearch();
                             }}
                         />
+                        <button
+                            className={`nav-search-filter-icon ${showAdvanced ? "active" : ""}`}
+                            onClick={() => {
+                                setShowAdvanced(!showAdvanced);
+                                setShowSuggestions(false);
+                            }}
+                            title="Advanced Filters"
+                        >
+                            <span className="material-symbols-outlined">
+                                tune
+                            </span>
+                        </button>
                     </div>
+
+                    {/* Autocomplete Dropdown */}
+                    {showSuggestions &&
+                        !showAdvanced &&
+                        suggestions.length > 0 && (
+                            <div className="search-autocomplete glass-panel animate-fade-in-up">
+                                {suggestions.map((movie) => (
+                                    <Link
+                                        to={`/movie/${movie.id}`}
+                                        className="search-suggestion-item"
+                                        key={movie.id}
+                                        onClick={() => {
+                                            setShowSuggestions(false);
+                                            setSearchQuery("");
+                                        }}
+                                    >
+                                        {movie.poster_path ? (
+                                            <img
+                                                src={`https://image.tmdb.org/t/p/w92${movie.poster_path}`}
+                                                alt={movie.title}
+                                            />
+                                        ) : (
+                                            <div className="search-suggestion-placeholder">
+                                                <span className="material-symbols-outlined">
+                                                    movie
+                                                </span>
+                                            </div>
+                                        )}
+                                        <div className="search-suggestion-info">
+                                            <h4>{movie.title}</h4>
+                                            <p>
+                                                {movie.release_date?.substring(
+                                                    0,
+                                                    4,
+                                                )}{" "}
+                                                • ★{" "}
+                                                {movie.vote_average.toFixed(1)}
+                                            </p>
+                                        </div>
+                                    </Link>
+                                ))}
+                            </div>
+                        )}
+
+                    {/* Advanced Filter Panel */}
+                    {showAdvanced && (
+                        <div className="search-advanced-panel glass-panel animate-fade-in-up">
+                            <div className="advanced-header">
+                                <h3>Advanced Filters</h3>
+                                <button
+                                    className="nav-icon-button"
+                                    onClick={() => setShowAdvanced(false)}
+                                >
+                                    <span className="material-symbols-outlined">
+                                        close
+                                    </span>
+                                </button>
+                            </div>
+
+                            <div className="advanced-scroll-content">
+                                <div className="filter-group">
+                                    <label>Genres</label>
+                                    <div className="filter-chips">
+                                        {allGenres.map((g) => (
+                                            <button
+                                                key={g.id}
+                                                className={`filter-chip ${filterGenres.includes(g.id) ? "active" : ""}`}
+                                                onClick={() =>
+                                                    setFilterGenres((prev) =>
+                                                        prev.includes(g.id)
+                                                            ? prev.filter(
+                                                                  (id) =>
+                                                                      id !==
+                                                                      g.id,
+                                                              )
+                                                            : [...prev, g.id],
+                                                    )
+                                                }
+                                            >
+                                                {g.name}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div className="filter-group">
+                                    <label>Cast / Crew</label>
+                                    <div className="actor-search-wrapper">
+                                        {selectedActor ? (
+                                            <div className="filter-chip active selected-actor-chip">
+                                                <span>
+                                                    {selectedActor.name}
+                                                </span>
+                                                <span
+                                                    className="material-symbols-outlined cancel-icon"
+                                                    onClick={() => {
+                                                        setSelectedActor(null);
+                                                        setActorQuery("");
+                                                    }}
+                                                >
+                                                    close
+                                                </span>
+                                            </div>
+                                        ) : (
+                                            <>
+                                                <input
+                                                    type="text"
+                                                    className="input-glass"
+                                                    placeholder="Search person..."
+                                                    value={actorQuery}
+                                                    onChange={(e) =>
+                                                        setActorQuery(
+                                                            e.target.value,
+                                                        )
+                                                    }
+                                                />
+                                                {actorSuggestions.length >
+                                                    0 && (
+                                                    <div className="actor-autocomplete glass-panel">
+                                                        {actorSuggestions.map(
+                                                            (person) => (
+                                                                <div
+                                                                    key={
+                                                                        person.id
+                                                                    }
+                                                                    className="actor-suggestion-item"
+                                                                    onClick={() => {
+                                                                        setSelectedActor(
+                                                                            person,
+                                                                        );
+                                                                        setActorSuggestions(
+                                                                            [],
+                                                                        );
+                                                                    }}
+                                                                >
+                                                                    {person.profile_path ? (
+                                                                        <img
+                                                                            src={`https://image.tmdb.org/t/p/w45${person.profile_path}`}
+                                                                            alt={
+                                                                                person.name
+                                                                            }
+                                                                        />
+                                                                    ) : (
+                                                                        <span className="material-symbols-outlined">
+                                                                            person
+                                                                        </span>
+                                                                    )}
+                                                                    <span>
+                                                                        {
+                                                                            person.name
+                                                                        }
+                                                                    </span>
+                                                                </div>
+                                                            ),
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div className="filter-row">
+                                    <div className="filter-group half">
+                                        <label>Release Year</label>
+                                        <input
+                                            type="number"
+                                            className="input-glass"
+                                            placeholder="e.g. 2024"
+                                            value={filterYear}
+                                            onChange={(e) =>
+                                                setFilterYear(e.target.value)
+                                            }
+                                            min="1900"
+                                            max="2030"
+                                        />
+                                    </div>
+                                    <div className="filter-group half">
+                                        <label>
+                                            Min Score:{" "}
+                                            <span className="text-purple">
+                                                {filterScore > 0
+                                                    ? filterScore
+                                                    : "Any"}
+                                            </span>
+                                        </label>
+                                        <input
+                                            title="Minimum Score"
+                                            type="range"
+                                            min="0"
+                                            max="10"
+                                            step="1"
+                                            value={filterScore}
+                                            onChange={(e) =>
+                                                setFilterScore(
+                                                    parseInt(e.target.value),
+                                                )
+                                            }
+                                            className="range-glass custom-slider"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="advanced-search-actions">
+                                <button
+                                    className="settings-btn remove"
+                                    onClick={() => {
+                                        setFilterGenres([]);
+                                        setSelectedActor(null);
+                                        setFilterYear("");
+                                        setFilterScore(0);
+                                    }}
+                                >
+                                    Clear
+                                </button>
+                                <button
+                                    className="settings-btn save"
+                                    onClick={applyAdvancedFilters}
+                                >
+                                    Apply Filters
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* Right Actions */}
@@ -227,7 +554,7 @@ export const Navbar = () => {
                             )}
                         </div>
                         <span className="nav-profile-name group-hover-text-primary hidden-md">
-                            {profile.displayName || "Alex Doe"}
+                            {profile.displayName}
                         </span>
                     </Link>
                 </div>

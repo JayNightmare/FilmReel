@@ -9,6 +9,8 @@ interface MovieRowProps {
     title: string;
     isTrending?: boolean;
     initialMovies: Movie[];
+    staticMovies?: boolean;
+    hideViewAll?: boolean;
 }
 
 /**
@@ -22,6 +24,8 @@ export const MovieRow = ({
     title,
     isTrending,
     initialMovies,
+    staticMovies = false,
+    hideViewAll = false,
 }: MovieRowProps) => {
     const [movies, setMovies] = useState<Movie[]>([]);
     const [page, setPage] = useState(2);
@@ -51,6 +55,7 @@ export const MovieRow = ({
 
     // Attach the IntersectionObserver to the sentinel
     const attachObserver = useCallback(() => {
+        if (staticMovies) return;
         if (observerRef.current) observerRef.current.disconnect();
 
         observerRef.current = new IntersectionObserver(
@@ -110,16 +115,18 @@ export const MovieRow = ({
         <section className="category-section animate-fade-in-up">
             <div className="category-header">
                 <h3 className="category-title">{title}</h3>
-                <Link
-                    to={
-                        isTrending
-                            ? "/category/popular"
-                            : `/category/${genre?.id}`
-                    }
-                    className="category-link"
-                >
-                    View All
-                </Link>
+                {!hideViewAll && (
+                    <Link
+                        to={
+                            isTrending
+                                ? "/category/popular"
+                                : `/category/${genre?.id}`
+                        }
+                        className="category-link"
+                    >
+                        View All
+                    </Link>
+                )}
             </div>
 
             <div className="carousel-container">
