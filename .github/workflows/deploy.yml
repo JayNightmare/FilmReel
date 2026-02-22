@@ -9,7 +9,6 @@ permissions:
   contents: write
 
 env:
-  NODE_ENV: production
   VITE_TMDB_API_KEY: ${{ secrets.VITE_TMDB_API_KEY }}
   VITE_WEBHOOK_PB: ${{ secrets.VITE_WEBHOOK_PB }}
 
