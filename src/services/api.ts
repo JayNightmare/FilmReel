@@ -43,6 +43,43 @@ export interface Person {
     known_for_department: string;
 }
 
+export interface TVShow {
+    id: number;
+    name: string;
+    poster_path: string | null;
+    backdrop_path: string | null;
+    overview: string;
+    vote_average: number;
+    first_air_date: string;
+    genre_ids: number[];
+    number_of_seasons?: number;
+    number_of_episodes?: number;
+    seasons?: Season[];
+}
+
+export interface Season {
+    id: number;
+    season_number: number;
+    name: string;
+    overview: string;
+    poster_path: string | null;
+    air_date: string | null;
+    episode_count: number;
+    episodes?: Episode[];
+}
+
+export interface Episode {
+    id: number;
+    episode_number: number;
+    season_number: number;
+    name: string;
+    overview: string;
+    still_path: string | null;
+    air_date: string | null;
+    runtime: number | null;
+    vote_average: number;
+}
+
 // Function to safely fetch from TMDB
 const fetchTMDB = async <T>(
     endpoint: string,
@@ -178,6 +215,64 @@ export const APIService = {
         });
         return data.results;
     },
+
+    // --- TV Show Methods ---
+
+    getTVGenres: async (): Promise<Genre[]> => {
+        const data = await fetchTMDB<{ genres: Genre[] }>("/genre/tv/list");
+        return data.genres;
+    },
+
+    getPopularTV: async (page: number = 1): Promise<TVShow[]> => {
+        const data = await fetchTMDB<{ results: TVShow[] }>("/tv/popular", {
+            page: page.toString(),
+        });
+        return data.results;
+    },
+
+    getTVDetails: async (tvId: number): Promise<TVShow> => {
+        return await fetchTMDB<TVShow>(`/tv/${tvId}`);
+    },
+
+    getSeasonDetails: async (
+        tvId: number,
+        seasonNumber: number,
+    ): Promise<Season> => {
+        return await fetchTMDB<Season>(`/tv/${tvId}/season/${seasonNumber}`);
+    },
+
+    searchTV: async (query: string, page: number = 1): Promise<TVShow[]> => {
+        const data = await fetchTMDB<{ results: TVShow[] }>("/search/tv", {
+            query,
+            page: page.toString(),
+        });
+        return data.results;
+    },
+
+    getSimilarTV: async (tvId: number): Promise<TVShow[]> => {
+        const data = await fetchTMDB<{ results: TVShow[] }>(
+            `/tv/${tvId}/similar`,
+        );
+        return data.results;
+    },
+
+    getTVCredits: async (tvId: number): Promise<CastMember[]> => {
+        const data = await fetchTMDB<{ cast: CastMember[] }>(
+            `/tv/${tvId}/credits`,
+        );
+        return data.cast.sort((a, b) => a.order - b.order);
+    },
+
+    discoverTV: async (
+        filters: Record<string, string>,
+        page: number = 1,
+    ): Promise<TVShow[]> => {
+        const data = await fetchTMDB<{ results: TVShow[] }>("/discover/tv", {
+            ...filters,
+            page: page.toString(),
+        });
+        return data.results;
+    },
 };
 
 // --- Mock Data Fallback ---
@@ -251,8 +346,108 @@ const getMockData = (endpoint: string): unknown => {
     }
 
     if (endpoint.includes("/movie/")) {
-        // Details
         return mockMovie;
+    }
+
+    // --- TV Mock Data ---
+    if (endpoint.includes("/genre/tv/list")) {
+        return {
+            genres: [
+                { id: 10759, name: "Action & Adventure" },
+                { id: 35, name: "Comedy" },
+                { id: 18, name: "Drama" },
+                { id: 10765, name: "Sci-Fi & Fantasy" },
+            ],
+        };
+    }
+
+    const mockTV: TVShow = {
+        id: 654321,
+        name: "Mock TV Show",
+        poster_path: null,
+        backdrop_path: null,
+        overview: "This is a mock TV show because no TMDB API key is provided.",
+        vote_average: 8.0,
+        first_air_date: "2026-01-01",
+        genre_ids: [18, 10765],
+        number_of_seasons: 3,
+    };
+
+    if (endpoint.includes("/tv/popular") || endpoint.includes("/discover/tv")) {
+        const offset = Math.floor(Math.random() * 1000000);
+        return {
+            results: Array(10)
+                .fill(null)
+                .map((_, i) => ({
+                    ...mockTV,
+                    id: offset + i,
+                    name: `Mock TV Show ${offset + i}`,
+                })),
+        };
+    }
+
+    if (endpoint.includes("/search/tv")) {
+        const offset = Math.floor(Math.random() * 1000000);
+        return {
+            results: Array(8)
+                .fill(null)
+                .map((_, i) => ({
+                    ...mockTV,
+                    id: offset + i,
+                    name: `TV Search Result ${offset + i}`,
+                })),
+        };
+    }
+
+    if (endpoint.includes("/tv/") && endpoint.includes("/season/")) {
+        return {
+            id: 1,
+            season_number: 1,
+            name: "Season 1",
+            overview: "Mock season overview.",
+            poster_path: null,
+            air_date: "2026-01-01",
+            episode_count: 8,
+            episodes: Array(8)
+                .fill(null)
+                .map((_, i) => ({
+                    id: i + 1,
+                    episode_number: i + 1,
+                    season_number: 1,
+                    name: `Episode ${i + 1}`,
+                    overview: `Mock episode ${i + 1} overview.`,
+                    still_path: null,
+                    air_date: "2026-01-01",
+                    runtime: 45,
+                    vote_average: 7.5,
+                })),
+        } as Season;
+    }
+
+    if (endpoint.includes("/tv/")) {
+        return {
+            ...mockTV,
+            seasons: [
+                {
+                    id: 1,
+                    season_number: 1,
+                    name: "Season 1",
+                    overview: "",
+                    poster_path: null,
+                    air_date: "2026-01-01",
+                    episode_count: 10,
+                },
+                {
+                    id: 2,
+                    season_number: 2,
+                    name: "Season 2",
+                    overview: "",
+                    poster_path: null,
+                    air_date: "2026-06-01",
+                    episode_count: 8,
+                },
+            ],
+        };
     }
 
     return {};

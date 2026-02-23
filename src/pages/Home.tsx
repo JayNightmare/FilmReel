@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { APIService } from "../services/api";
-import type { Movie, Genre } from "../services/api";
+import type { Movie, TVShow, Genre } from "../services/api";
 import { StorageService } from "../services/storage";
 import { useStorageSync } from "../hooks/useStorageSync";
 import { MovieRow } from "../components/MovieRow";
@@ -23,6 +23,9 @@ export default function Home() {
 
     // Hidden Gems
     const [hiddenGems, setHiddenGems] = useState<Movie[]>([]);
+
+    // Popular TV Shows
+    const [popularTV, setPopularTV] = useState<TVShow[]>([]);
 
     // Favorite Genre rows (2 pages)
     const [favGenreMoviesP1, setFavGenreMoviesP1] = useState<Movie[]>([]);
@@ -117,15 +120,19 @@ export default function Home() {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const [popMovies, genreList, gems] = await Promise.all([
-                    APIService.getPopularMovies(1),
-                    APIService.getGenres(),
-                    APIService.getHiddenGems(1),
-                ]);
+                const [popMovies, genreList, gems, tvShows] = await Promise.all(
+                    [
+                        APIService.getPopularMovies(1),
+                        APIService.getGenres(),
+                        APIService.getHiddenGems(1),
+                        APIService.getPopularTV(1),
+                    ],
+                );
 
                 setPopular(popMovies);
                 setGenres(genreList);
                 setHiddenGems(gems);
+                setPopularTV(tvShows);
                 GenreMap.seed(genreList);
 
                 // Fetch movies for the first 3 genres
@@ -338,6 +345,16 @@ export default function Home() {
                 <MovieRow
                     title="Hidden Gems"
                     initialMovies={hiddenGems}
+                    hideViewAll
+                />
+            )}
+
+            {/* Popular TV Shows */}
+            {popularTV.length > 0 && (
+                <MovieRow
+                    title="Popular TV Shows"
+                    initialMovies={popularTV}
+                    mediaType="tv"
                     hideViewAll
                 />
             )}

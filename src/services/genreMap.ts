@@ -4,6 +4,7 @@
  * APIService.getGenres() resolves (see Home.tsx / Category.tsx).
  */
 const GENRE_SEED: Record<number, string> = {
+    // Movie genres
     28: "Action",
     12: "Adventure",
     16: "Animation",
@@ -23,6 +24,15 @@ const GENRE_SEED: Record<number, string> = {
     53: "Thriller",
     10752: "War",
     37: "Western",
+    // TV-specific genres
+    10759: "Action & Adventure",
+    10762: "Kids",
+    10763: "News",
+    10764: "Reality",
+    10765: "Sci-Fi & Fantasy",
+    10766: "Soap",
+    10767: "Talk",
+    10768: "War & Politics",
 };
 
 const genreCache = new Map<number, string>(

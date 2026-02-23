@@ -15,6 +15,7 @@ export interface WatchlistItem {
     title: string;
     poster_path: string | null;
     addedAt: string; // ISO String
+    mediaType?: "movie" | "tv";
 }
 
 const PROFILE_KEY = "filmreel_user_profile";
@@ -76,12 +77,14 @@ export const StorageService = {
         id: number;
         title: string;
         poster_path: string | null;
+        mediaType?: "movie" | "tv";
     }): void => {
         const list = StorageService.getWatchlist();
         if (list.some((item) => item.id === movie.id)) return;
         const item: WatchlistItem = {
             ...movie,
             addedAt: new Date().toISOString(),
+            mediaType: movie.mediaType ?? "movie",
         };
         localStorage.setItem(WATCHLIST_KEY, JSON.stringify([item, ...list]));
         StorageService.dispatchStorageEvent(WATCHLIST_KEY);

@@ -1,43 +1,103 @@
+<!-- markdownlint-disable MD024 -->
+
 # Changelog
 
 All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- Feature: Episode-level watched tracking for TV series.
+
+## [0.0.9] - 2026-02-23
+
 ### Added
 
-- Feature: Movie Viewer Splash Controls — new "Ready to continue?" interactive panel allowing players to seek with a slider, Restart, or Resume before clicking play. Synchronizes manually with the VidKing `watch_progress` localStorage object.
-- Feature: Navbar Search Overhaul — live autocomplete dropdown, enter/icon click triggers.
-- Feature: Navbar Advanced Filters — glassmorphic panel to search by genre, actor, release year, and minimum score.
-- Feature: SearchResults page updated to support complex URL filter parameters via TMDB's [discover](file:///v:/Documents/Personal%20Projects/FilmReel/src/services/api.ts#171-181) endpoint.
-- Feature: Movie Viewer Top Cast Carousel fetching actor credits via TMDB API.
-- Feature: Mood Survey Overhaul — Glassmorphic redesign, "Thinking..." sequence, one-word answers, and "Extend Survey" review-sentiment matching capability.
-- Feature: [useStorageSync](file:///v:/Documents/Personal%20Projects/FilmReel/src/hooks/useStorageSync.ts#3-36) custom hook for cross-tab and same-tab localStorage reactivity.
-- Feature: Complete redesign of Home Page rows (Continue Watching, Watchlist, Favorite Genre, Trending, Hidden Gems).
-- Initialized Vite + React + TypeScript project architecture.
-- Created task management and core memory artifacts.
-- Functional Glassmorphism Design System (Purple/Dark).
-- Mock TMDB API fetching system (and VidKing embed support).
-- Feature: Home Movie Browser with infinite-scrolling horizontal rows and dynamically spawning vertical genre categories.
-- Feature: Global deduplication register to guarantee that the same movie cannot spawn twice on the Browser Dashboard.
-- Feature: Mood Discovery Survey with weighted suggestion algorithms.
-- Feature: Movie Details Viewer.
-- Feature: Account Page with Base64 Local Storage Profile saving.
-- GitHub Pages Deployment Configuration (film.nexusgit.info CNAME).
-- Overhauled the Design System to match the Google Stitch Reference (Spline Sans font, Material Symbols).
-- Feature: Functional Search — Navbar search bar routes to `/search?q=` with infinite scroll results grid.
-- Feature: MovieViewer upgrade — synopsis text, genre tags, poster error fallback, "You Might Also Like" related movies.
-- Feature: Watchlist — bookmark toggle on MovieCard (hover) and MovieViewer sidebar, full CRUD in localStorage, Account page watchlist grid with remove buttons.
-- Feature: Account page polish — save toast notification, watchlist section, expanded genre select, extracted inline styles to [Account.css](file:///v:/Documents/Personal%20Projects/FilmReel/src/styles/Account.css).
-- Feature: 404 "Scene Not Found" page with themed gradient text and CTA buttons.
-- Feature: Netflix-style MovieViewer redesign — full-viewport player, gradient fade, scroll-for-details hint, below-the-fold info layout.
-- Feature: Stitch UI immersive player overlay — glassmorphism control bar, title pill, center play circle, Mood Mode button, cinematic TMDB backdrop.
-- Feature: PostMessage player sync — live progress bar, time display, and play/pause state synced with VidKing iframe via `PLAYER_EVENT` messages. Auto-hiding controls on idle, resume-from-where-left-off via localStorage.
+- Feature: Full TV Shows integration — browse, view, and track TV series alongside movies.
+- Feature: TV Viewer page (`TVViewer.tsx`) with season selector, episode grid, multi-provider embed URLs, and cast carousel.
+- Feature: "Popular TV Shows" row on the Home dashboard.
+- Feature: Search autocomplete now returns both movies and TV shows (with a "TV" badge).
+- Feature: Shared `MovieCard`/`MovieRow` components accept a `mediaType` prop for polymorphic rendering.
+- Feature: TV-specific genre IDs seeded in `genreMap.ts`.
+- Feature: Static release notes notification system (`releaseNotes.ts`) — add an entry before each deploy and users see it as an unread notification.
+
+## [0.0.8] - 2026-02-23
+
+### Added
+
+- Feature: Restructured MovieViewer details section to a YouTube-style mobile layout for superior ergonomics (Title → Watchlist/Share → Description → Support Actions).
 
 ### Fixed
 
-- Genre labels on MovieCards now dynamically resolve from TMDB genre IDs via `GenreMap` (was hardcoded "Action").
-- Removed `console.log` of TMDB API key (security fix).
-- Replaced dead `via.placeholder.com` poster fallback with inline SVG + `onError` handler.
-- Fixed MovieRow global dedup emptying all rows — changed to row-scoped deduplication.
-- Fixed IntersectionObserver on `display: contents` wrapper (replaced with 1px sentinel element).
+- Fixed: Resolved autocomplete dropdown clipping issues by removing `overflow-x: hidden` from the Navbar.
+
+## [0.0.7] - 2026-02-23
+
+### Added
+
+- Feature: Comprehensive mobile layout audit and overhaul across the entire application.
+
+### Fixed
+
+- Fixed: Applied global `overflow-x: hidden` on html/body constraints to prevent horizontal scrolling issues.
+- Fixed: Reflowed Navbar responsively to gracefully wrap search inputs on smaller screens.
+- Fixed: Constrained the Cast Carousel and Feedback Modal to prevent exceeding mobile viewport widths.
+- Fixed: Adjusted Hero section sizing and ensured text clipping (`line-clamp-2`).
+
+## [0.0.6] - 2026-02-23
+
+### Added
+
+- Feature: Integrated multi-provider streaming support (VidKing, VidSrc, SuperEmbed) via a sleek sidebar dropdown.
+- Feature: Glassmorphic design pass on the Source Provider dropdown and Advanced Search panel.
+
+### Changed
+
+- Performance: Replaced continuous `postMessage` time sync with a more performant binary "Watched" status trigger upon play to eliminate severe iframe-induced React render stuttering.
+
+## [0.0.5] - 2026-02-23
+
+### Added
+
+- Feature: Movie Viewer Splash Controls — an immersive "Ready to continue?" interactive panel. Supports seeking with a slider, Restart, and Resume synchronized with local storage.
+
+## [0.0.4] - 2026-02-23
+
+### Added
+
+- Feature: Navbar Search Overhaul — introduces live debounced autocomplete dropdowns.
+- Feature: Navbar Advanced Filters — immersive panel to query by genre, actor, release year, and minimum score.
+- Feature: `SearchResults` page overhaul to parse and support complex URL filter parameters natively.
+
+## [0.0.3] - 2026-02-23
+
+### Added
+
+- Feature: Integrated dynamic top Cast Carousel fetching actor credits into the Movie Viewer.
+- Feature: Mood Survey Overhaul — complete redesign featuring an interactive "Thinking..." sequence, one-word options, and an "Extend Survey" sentiment matching capability.
+- Feature: Built `useStorageSync` custom hook for seamless cross-tab and same-tab localStorage reactivity.
+- Feature: Redesigned Home Page rows completely (Continue Watching, Watchlist, Favorite Genre, Trending, Hidden Gems).
+
+## [0.0.2] - 2026-02-23
+
+### Added
+
+- Feature: Robust 404 "Scene Not Found" catch-all route with custom styling.
+- Feature: Watchlist system overhaul with full CRUD localStorage sync, bookmark toggles (hover/sidebar), and interactive Account grid.
+- Feature: Netflix-style MovieViewer immersive redesign featuring gradient fades, scroll-for-details layouts, and Glassmorphism controls.
+
+### Fixed
+
+- Fixed: MovieRow global deduplication bug that was emptying rows. Replaced with row-scoped deduplication.
+- Fixed: Genre labels dynamically resolve from TMDB genre IDs instead of hardcoded strings.
+- Fixed: Obfuscated API keys from console logs.
+- Fixed: Replaced broken placeholder images with inline SVG `onError` fallbacks.
+
+## [0.0.1] - 2026-02-23
+
+### Added
+
+- Initialized project architecture using Vite + React + TypeScript.
+- Implemented comprehensive Glassmorphism Design System matching Apple iOS 26 / Google Stitch UI.
+- Built core layouts: Home Browser, Mood Survey, Account Profile.
+- Configured GitHub Actions CI/CD for automatic GitHub Pages deployment.
+- Initialized local persistent storage architectures and API service layers.

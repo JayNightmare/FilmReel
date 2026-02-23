@@ -5,7 +5,7 @@ import type { Movie, CastMember } from "../services/api";
 import { GenreMap } from "../services/genreMap";
 import { StorageService } from "../services/storage";
 import { MovieCard } from "../components/MovieCard";
-import { FeedbackModal } from "../components/FeedbackModal";
+import { useFeedback } from "../contexts/FeedbackContext";
 import "../styles/MovieViewer.css";
 
 const FALLBACK_POSTER =
@@ -34,7 +34,7 @@ export default function MovieViewer() {
     type Provider = "vidking" | "vidsrc" | "superembed";
     const [provider, setProvider] = useState<Provider>("vidking");
 
-    const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
+    const { openFeedback } = useFeedback();
 
     const refreshIframe = useCallback(() => {
         setIframeKey((k) => k + 1);
@@ -193,11 +193,6 @@ export default function MovieViewer() {
 
     return (
         <div className="animate-in fade-in">
-            <FeedbackModal
-                isOpen={isFeedbackOpen}
-                onClose={() => setIsFeedbackOpen(false)}
-                movieTitle={movie.title}
-            />
             {/* Full-screen Player Area */}
             <div
                 ref={heroRef}
@@ -302,7 +297,7 @@ export default function MovieViewer() {
                             </button>
                             <button
                                 className="pill-ticket-btn"
-                                onClick={() => setIsFeedbackOpen(true)}
+                                onClick={() => openFeedback(movie.title)}
                                 title="Submit Feedback"
                             >
                                 <span className="material-symbols-outlined pill-ticket-icon">
@@ -409,7 +404,7 @@ export default function MovieViewer() {
                             </button>
                             <button
                                 className="viewer-mobile-action-btn"
-                                onClick={() => setIsFeedbackOpen(true)}
+                                onClick={() => openFeedback(movie.title)}
                                 title="Submit Feedback"
                             >
                                 <span className="material-symbols-outlined">

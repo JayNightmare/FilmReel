@@ -7,6 +7,8 @@ import type { Movie, Person, Genre } from "../services/api";
 import { useStorageSync } from "../hooks/useStorageSync";
 import "../styles/Navbar.css";
 
+import { RELEASE_NOTES, type ReleaseNote } from "../config/releaseNotes";
+
 interface Notification {
     id: string;
     title: string;
@@ -15,40 +17,66 @@ interface Notification {
     read: boolean;
 }
 
+const NOTIF_KEY = "notif-film";
+const SEEN_KEY = "notif-seen-ids";
+
+/**
+ * Diffs the static RELEASE_NOTES registry against IDs the user
+ * has already seen. Returns merged notifications with correct
+ * read/unread state.
+ */
+function buildNotifications(): Notification[] {
+    const storedNotifs: Notification[] = (() => {
+        try {
+            const raw = localStorage.getItem(NOTIF_KEY);
+            return raw ? JSON.parse(raw) : [];
+        } catch {
+            return [];
+        }
+    })();
+
+    const seenIds: Set<string> = (() => {
+        try {
+            const raw = localStorage.getItem(SEEN_KEY);
+            return new Set<string>(raw ? JSON.parse(raw) : []);
+        } catch {
+            return new Set<string>();
+        }
+    })();
+
+    const existingById = new Map(storedNotifs.map((n) => [n.id, n]));
+    const merged: Notification[] = RELEASE_NOTES.map((note: ReleaseNote) => {
+        const existing = existingById.get(note.id);
+        if (existing) return existing;
+        return {
+            ...note,
+            read: seenIds.has(note.id),
+        };
+    });
+
+    merged.sort(
+        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+    );
+
+    localStorage.setItem(NOTIF_KEY, JSON.stringify(merged));
+    return merged;
+}
+
 export const Navbar = () => {
     const profile = useStorageSync<UserProfile>(
         "filmreel_profile",
         StorageService.getProfile,
     );
 
-    const [notifications, setNotifications] = useState<Notification[]>(() => {
-        const stored = localStorage.getItem("notif-film");
-        let parsed: Notification[] = [];
-        if (stored) {
-            parsed = JSON.parse(stored);
-        } else {
-            parsed = [
-                {
-                    id: "welcome-1",
-                    title: "Welcome to FilmReel!",
-                    message:
-                        "Take a mood survey to get personalized movie recommendations.",
-                    date: new Date().toISOString(),
-                    read: false,
-                },
-            ];
-            localStorage.setItem("notif-film", JSON.stringify(parsed));
-        }
-        parsed.sort(
-            (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
-        );
-        return parsed;
-    });
+    const [notifications, setNotifications] =
+        useState<Notification[]>(buildNotifications);
     const [showNotifs, setShowNotifs] = useState(false);
 
     // Search State
     const [searchQuery, setSearchQuery] = useState("");
-    const [suggestions, setSuggestions] = useState<Movie[]>([]);
+    const [suggestions, setSuggestions] = useState<
+        (Movie & { _mediaType?: "movie" | "tv" })[]
+    >([]);
     const [showSuggestions, setShowSuggestions] = useState(false);
     const searchWrapperRef = useRef<HTMLDivElement>(null);
     const dropDownRef = useRef<HTMLDivElement>(null);
@@ -92,13 +120,30 @@ export const Navbar = () => {
             document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
-    // Debounce Movie Search
     useEffect(() => {
         const timer = setTimeout(() => {
             if (searchQuery.trim().length >= 2 && !showAdvanced) {
-                APIService.searchMovies(searchQuery)
-                    .then((res) => {
-                        setSuggestions(res.slice(0, 5));
+                Promise.all([
+                    APIService.searchMovies(searchQuery),
+                    APIService.searchTV(searchQuery),
+                ])
+                    .then(([movies, tvShows]) => {
+                        const movieResults = movies.slice(0, 3).map((m) => ({
+                            ...m,
+                            _mediaType: "movie" as const,
+                        }));
+                        const tvResults = tvShows.slice(0, 2).map((t) => ({
+                            id: t.id,
+                            title: t.name,
+                            poster_path: t.poster_path,
+                            backdrop_path: t.backdrop_path,
+                            overview: t.overview,
+                            vote_average: t.vote_average,
+                            release_date: t.first_air_date,
+                            genre_ids: t.genre_ids,
+                            _mediaType: "tv" as const,
+                        }));
+                        setSuggestions([...movieResults, ...tvResults]);
                         setShowSuggestions(true);
                     })
                     .catch(console.error);
@@ -130,14 +175,17 @@ export const Navbar = () => {
         if (!showNotifs) {
             const updated = notifications.map((n) => ({ ...n, read: true }));
             setNotifications(updated);
-            localStorage.setItem("notif-film", JSON.stringify(updated));
+            localStorage.setItem(NOTIF_KEY, JSON.stringify(updated));
         }
         setShowNotifs(!showNotifs);
     };
 
     const clearNotifs = () => {
+        // Mark all current release note IDs as "seen" so they don't reappear
+        const allSeenIds = RELEASE_NOTES.map((n) => n.id);
+        localStorage.setItem(SEEN_KEY, JSON.stringify(allSeenIds));
         setNotifications([]);
-        localStorage.setItem("notif-film", JSON.stringify([]));
+        localStorage.setItem(NOTIF_KEY, JSON.stringify([]));
     };
 
     const executeSearch = () => {
@@ -233,9 +281,13 @@ export const Navbar = () => {
                             <div className="search-autocomplete glass-panel animate-fade-in-up">
                                 {suggestions.map((movie) => (
                                     <Link
-                                        to={`/movie/${movie.id}`}
+                                        to={
+                                            movie._mediaType === "tv"
+                                                ? `/tv/${movie.id}`
+                                                : `/movie/${movie.id}`
+                                        }
                                         className="search-suggestion-item"
-                                        key={movie.id}
+                                        key={`${movie._mediaType}-${movie.id}`}
                                         onClick={() => {
                                             setShowSuggestions(false);
                                             setSearchQuery("");
@@ -249,12 +301,21 @@ export const Navbar = () => {
                                         ) : (
                                             <div className="search-suggestion-placeholder">
                                                 <span className="material-symbols-outlined">
-                                                    movie
+                                                    {movie._mediaType === "tv"
+                                                        ? "live_tv"
+                                                        : "movie"}
                                                 </span>
                                             </div>
                                         )}
                                         <div className="search-suggestion-info">
-                                            <h4>{movie.title}</h4>
+                                            <h4>
+                                                {movie.title}
+                                                {movie._mediaType === "tv" && (
+                                                    <span className="search-tv-badge">
+                                                        TV
+                                                    </span>
+                                                )}
+                                            </h4>
                                             <p>
                                                 {movie.release_date?.substring(
                                                     0,

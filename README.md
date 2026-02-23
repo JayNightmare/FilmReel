@@ -1,16 +1,22 @@
-# FilmReel 🎬
+# FilmReel
 
 FilmReel is a modern, responsive web application that lets you browse, discover, and watch movies. Built with a sleek Glassmorphism design system (Apple iOS 26 inspired dark theme with purple accents), it offers a premium movie discovery and viewing experience.
 
-## ✨ Features
+## Features
 
 - **Home Dashboard:** A Netflix-style browser where movies are categorized by genre in horizontally scrolling rows. Features a dynamic hero spotlight for trending releases.
-- **Mood Discovery Survey:** Can't decide what to watch? Take a quick 5-question survey. Your answers determine your current mood, and the app's weighted algorithm suggests movies tailored to how you're feeling.
-- **Movie Viewer:** Dive into a movie's details (rating, release date, overview) and watch securely via the integrated VidKing embedded player.
-- **Account Settings:** Customize your profile locally. Set your display name, favorite genre, and securely convert a profile picture up to 5MB into a local Base64 string.
-- **Mood History:** Keep track of your past moods and recommendations straight from your Account page.
+- **Movie Viewer:** Dive into a movie's details (rating, release date, overview), browse dynamic Top Cast carousels, and watch securely via the integrated embedded players.
+- **Multi-Provider Streaming:** Seamlessly switch between streaming sources (VidKing, VidSrc, SuperEmbed) via a sleek Glassmorphic dropdown to ensure uninterrupted playback.
+- **Advanced Discovery & Search:** Instantly find content using the live debounced Navbar search autocomplete, or drill down using the Advanced Filter Panel (genre, actor, year, score).
+- **Mood Discovery Survey:** Can't decide what to watch? Take a quick, interactive one-word survey. Your answers determine your current mood, and the app's weighted algorithm suggests movies tailored to how you're feeling.
+- **Account Settings & Watchlist:** Customize your profile locally, save your favorite genres, and manage your curated Watchlist completely offline.
+- **Mobile First:** A meticulously crafted Apple iOS 26 / Google Stitch UI design system ensures flawless, visually stunning responsiveness across all screen sizes.
 
-## 🛠️ Tech Stack
+## Coming Soon
+
+- **TV Shows Integration:** Comprehensive browsing, viewing, and episode tracking capabilities for TV series.
+
+## Tech Stack
 
 - **Framework:** React + TypeScript
 - **Build Tool:** Vite
@@ -20,7 +26,7 @@ FilmReel is a modern, responsive web application that lets you browse, discover,
 - **Data Persistence:** Local Storage (No backend required)
 - **APIs:** The Movie Database (TMDB) for metadata, VidKing.net for video playback
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 
@@ -56,7 +62,7 @@ Ensure you have Node.js and npm installed on your machine.
 
 5. Open your browser and navigate to the provided local URL (typically `http://localhost:5173`).
 
-## 🚢 Deployment
+## Deployment
 
 This project is configured to deploy automatically to GitHub Pages using the `gh-pages` package.
 
@@ -68,6 +74,6 @@ npm run deploy
 
 The site will be built and pushed to the `gh-pages` branch, serving at `https://film.nexusgit.info`.
 
-## 📝 License
+## License
 
 This project is for personal use and educational purposes. Data provided by TMDB. Video streaming provided by VidKing.

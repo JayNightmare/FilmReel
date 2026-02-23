@@ -1,7 +1,10 @@
 import { Link } from "react-router-dom";
+import { useFeedback } from "../contexts/FeedbackContext";
 import "../styles/Footer.css";
 
 export const Footer = () => {
+    const { openFeedback } = useFeedback();
+
     return (
         <footer className="footer relative z-10">
             <div className="container">
@@ -53,10 +56,15 @@ export const Footer = () => {
                                 <Link to="/account">Mood History</Link>
                             </li>
                             <li>
-                                <a href="#">Settings</a>
-                            </li>
-                            <li>
-                                <a href="#">Help Center</a>
+                                <a
+                                    href="#"
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        openFeedback();
+                                    }}
+                                >
+                                    Send Feedback
+                                </a>
                             </li>
                         </ul>
                     </div>

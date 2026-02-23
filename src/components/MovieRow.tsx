@@ -1,16 +1,17 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { APIService } from "../services/api";
-import type { Movie, Genre } from "../services/api";
+import type { Movie, TVShow, Genre } from "../services/api";
 import { MovieCard } from "./MovieCard";
 
 interface MovieRowProps {
     genre?: Genre;
     title: string;
     isTrending?: boolean;
-    initialMovies: Movie[];
+    initialMovies: (Movie | TVShow)[];
     staticMovies?: boolean;
     hideViewAll?: boolean;
+    mediaType?: "movie" | "tv";
 }
 
 /**
@@ -26,8 +27,9 @@ export const MovieRow = ({
     initialMovies,
     staticMovies = false,
     hideViewAll = false,
+    mediaType = "movie",
 }: MovieRowProps) => {
-    const [movies, setMovies] = useState<Movie[]>([]);
+    const [movies, setMovies] = useState<(Movie | TVShow)[]>([]);
     const [page, setPage] = useState(2);
     const [loading, setLoading] = useState(false);
     const [hasMore, setHasMore] = useState(true);
@@ -41,7 +43,7 @@ export const MovieRow = ({
         if (initialMovies.length === 0) return;
 
         rowSeenIds.current.clear();
-        const unique: Movie[] = [];
+        const unique: (Movie | TVShow)[] = [];
         for (const m of initialMovies) {
             if (!rowSeenIds.current.has(m.id)) {
                 rowSeenIds.current.add(m.id);
@@ -83,8 +85,10 @@ export const MovieRow = ({
         setLoading(true);
 
         try {
-            let fetched: Movie[] = [];
-            if (isTrending) {
+            let fetched: (Movie | TVShow)[] = [];
+            if (mediaType === "tv") {
+                fetched = await APIService.getPopularTV(page);
+            } else if (isTrending) {
                 fetched = await APIService.getPopularMovies(page);
             } else if (genre) {
                 fetched = await APIService.getMoviesByGenre(genre.id, page);
@@ -131,7 +135,11 @@ export const MovieRow = ({
 
             <div className="carousel-container">
                 {movies.map((movie) => (
-                    <MovieCard key={movie.id} movie={movie} />
+                    <MovieCard
+                        key={movie.id}
+                        movie={movie}
+                        mediaType={mediaType}
+                    />
                 ))}
 
                 {/* Sentinel: sits at the end of the row and triggers the next page load */}

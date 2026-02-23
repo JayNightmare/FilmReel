@@ -34,22 +34,19 @@
 - **CI/CD**: Added a GitHub Actions workflow to automatically build and deploy the React application to the `gh-pages` branch upon pushes to main/master.
 - **SEO & Social**: Improved website metadata (`index.html`) with Open Graph tags, Twitter Cards, a detailed description, and a custom SVG favicon (`film-reel.svg`).
 
-- **Phase 1 Implementation**: Enhanced foundational codebase with new TMDB API endpoints ([getMovieCredits](file:///v:/Documents/Personal%20Projects/FilmReel/src/services/api.ts#123-129), [getHiddenGems](file:///v:/Documents/Personal%20Projects/FilmReel/src/services/api.ts#160-170), etc.), upgraded `StorageService`, and built [useStorageSync](file:///v:/Documents/Personal%20Projects/FilmReel/src/hooks/useStorageSync.ts#3-36) hook. Redesigned Home page with reactive rows.
-- **Phase 2 Implementation**: Integrated TMDB Cast credits into Movie Viewer. Completely overhauled Mood Survey (glassmorphic UI, one-word options, animated sequence, Extend Survey via sentiment matching).
-
-- **Phase 3 Implementation**: Enhanced the Navbar with a live debounced search autocomplete and an advanced filter panel. Also overhauled SearchResults to support the new URL parameters.
-- **Phase 4 Implementation**: Upgraded the Movie Viewer splash screen with an interactive progress panel. Added a seek slider, Restart, and Resume buttons that sync identically to VidKing's `watch_progress` key.
-- **Phase 5 Implementation**: Added multi-provider streaming support to the Movie Viewer. Users can now switch between VidKing (default), VidSrc, and SuperEmbed via a Glassmorphic dropdown in the details sidebar to bypass broken host servers. Note: Progress tracking degrades gracefully for VidSrc/SuperEmbed as they don't emit postMessage events.
-- **Phase 6 Implementation**: Replaced VidKing continuous `postMessage` time sync with a simple binary "Watched" status trigger upon play. This resolves the severe iframe stuttering issue caused by constant React state updates. The Home dashboard "Continue Watching" row was similarly converted to a "Watch It Again" row.
-- **Phase 7 Implementation**: Fixed UI styling bugs across the application. Added a sleek Glassmorphism design to the Source Provider dropdown in the Movie Viewer. Fixed the Advanced Search Panel's positioning in the Navbar to correctly anchor below the search bar, and updated its internal buttons to use the global theme.
-- **Phase 8 Implementation**: Implemented proper mobile responsiveness for the Navbar. The Search bar, which was previously strictly hidden on mobile devices, has been restored by dynamically reflowing the Navbar into two rows (Logo/Actions on top, Search underneath) via CSS `flex-wrap` and `order`.
-- **Phase 9 Implementation**: Addressed mobile page stretching issues. Fixed the `MovieViewer` Cast Carousel from exceeding `100vw` by securely constraining its mobile `max-width`. Updated the Feedback Modal to include `max-height` (90vh) and internal scrolling `overflow-y: auto` so it remains fully accessible on short screens.
-- **Phase 10 Implementation**: Comprehensive mobile layout audit and overhaul. Added `overflow-x: hidden` globally (html/body/container/navbar), fixed the Navbar with `flex-wrap` and `flex-basis: 100%` to force the search bar to its own row, added responsive hero section sizing, fixed hero description clipping by replacing `truncate` with `line-clamp-2`, added mobile carousel edge-to-edge scrolling, and repositioned the FAB.
-- **Phase 11 Implementation**: Restructured the MovieViewer details section to a YouTube-style mobile layout: Title → Share/Watchlist row → Description → "Having issues?" row (Refresh + Feedback). Overlay watchlist button is hidden on mobile. Fixed CSS cascade order so base `display: none` rules appear before media query overrides.
+- **Version 0.0.9**: TV Shows integration, plus a static release notes notification system (`releaseNotes.ts` config → Navbar diff against localStorage).
+- **Version 0.0.8**: Restructured MovieViewer details to YouTube-style layout; fixed autocomplete dropdown clipping issue caused by navbar CSS constraints.
+- **Version 0.0.7**: Comprehensive mobile layout audit and overhaul ensuring robust cross-device support; globally constrained horizontal overflow.
+- **Version 0.0.6**: Integrated multi-provider streaming support via a sleek Glassmorphic sidebar dropdown; migrated to a performant binary "Watched" status trigger.
+- **Version 0.0.5**: Added Movie Viewer Splash Controls (slider, restart, resume) synchronized with local storage.
+- **Version 0.0.4**: Navbar Search Overhaul with live autocomplete; Advanced Filter Panel for detailed querying.
+- **Version 0.0.3**: Dynamic Top Cast Carousel in MovieViewer; Mood Survey Overhaul; `useStorageSync` hook built.
+- **Version 0.0.2**: Robust 404 page; Watchlist system overhaul; Netflix-style MovieViewer immersive redesign.
+- **Version 0.0.1**: Initial project architecture, Glassmorphism design system, Home Browser, Mood Survey, Account Profile.
 
 ### Next Features
 
-- All Phase 1-5 features have been fully completed.
+- **Episode-Level Tracking**: Track individual episodes as watched for TV series continuation.
 
 ## Architectural Decisions
 
