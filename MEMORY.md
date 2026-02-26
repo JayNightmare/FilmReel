@@ -34,6 +34,7 @@
 - **CI/CD**: Added a GitHub Actions workflow to automatically build and deploy the React application to the `gh-pages` branch upon pushes to main/master.
 - **SEO & Social**: Improved website metadata (`index.html`) with Open Graph tags, Twitter Cards, a detailed description, and a custom SVG favicon (`film-reel.svg`).
 
+- **Version 0.0.10**: Updated Search page to simultaneously query and interleave Movies and TV Shows, complete with Film/TV badge indicators on MovieCards.
 - **Version 0.0.9**: TV Shows integration, plus a static release notes notification system (`releaseNotes.ts` config → Navbar diff against localStorage).
 - **Version 0.0.8**: Restructured MovieViewer details to YouTube-style layout; fixed autocomplete dropdown clipping issue caused by navbar CSS constraints.
 - **Version 0.0.7**: Comprehensive mobile layout audit and overhaul ensuring robust cross-device support; globally constrained horizontal overflow.

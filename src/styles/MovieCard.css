@@ -116,3 +116,20 @@
 .movie-bookmark.active .material-symbols-outlined {
     color: var(--accent-purple-light);
 }
+
+.media-type-badge {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    z-index: 15;
+    background: rgba(0, 0, 0, 0.6);
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: white;
+    text-transform: uppercase;
+    pointer-events: none;
+}

@@ -6,6 +6,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- Feature: Updated Search Results page to simultaneously query and interleave Movies and TV Shows.
+- Feature: Added Film/TV badge to `MovieCard` components.
 - Feature: Episode-level watched tracking for TV series.
 
 ## [0.0.9] - 2026-02-23
