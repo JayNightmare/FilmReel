@@ -18,6 +18,8 @@ interface Notification {
 	read: boolean;
 }
 
+type SearchCategory = "movie_tv" | "actor" | "mood" | "genre" | "year";
+
 const NOTIF_KEY = "notif-film";
 const SEEN_KEY = "notif-seen-ids";
 
@@ -79,6 +81,8 @@ export const Navbar = () => {
 
 	// Search State
 	const [searchQuery, setSearchQuery] = useState("");
+	const [searchCategory, setSearchCategory] =
+		useState<SearchCategory>("movie_tv");
 	const [suggestions, setSuggestions] = useState<
 		(Movie & { _mediaType?: "movie" | "tv" })[]
 	>([]);
@@ -116,6 +120,17 @@ export const Navbar = () => {
 		ambiguous: [18, 9648],
 	};
 
+	const searchCategories: {
+		id: SearchCategory;
+		label: string;
+	}[] = [
+		{ id: "movie_tv", label: "Movie/TV Show" },
+		{ id: "actor", label: "Actor" },
+		{ id: "mood", label: "Mood" },
+		{ id: "genre", label: "Genre" },
+		{ id: "year", label: "Release Year" },
+	];
+
 	const resolveSearchGenreIds = (
 		query: string,
 		genres: Genre[],
@@ -144,6 +159,34 @@ export const Navbar = () => {
 		genreMatches.forEach((g) => genreIds.add(g.id));
 
 		return Array.from(genreIds);
+	};
+
+	const resolveGenreOnlyIds = (
+		query: string,
+		genres: Genre[],
+	): number[] => {
+		const normalized = query.trim().toLowerCase();
+		if (!normalized) return [];
+
+		const tokens = normalized.split(/\s+/).filter(Boolean);
+		const matches = genres.filter((genre) => {
+			const name = genre.name.toLowerCase();
+			return (
+				normalized === name ||
+				(normalized.length >= 3 &&
+					name.includes(normalized)) ||
+				tokens.some((token) => token === name)
+			);
+		});
+
+		return matches.map((genre) => genre.id);
+	};
+
+	const extractYear = (value: string): string => {
+		const trimmed = value.trim();
+		if (/^(19|20)\d{2}$/.test(trimmed)) return trimmed;
+		const yearMatch = trimmed.match(/(19|20)\d{2}/);
+		return yearMatch?.[0] || "";
 	};
 
 	// Initial load: Genres
@@ -190,7 +233,11 @@ export const Navbar = () => {
 
 	useEffect(() => {
 		const timer = setTimeout(() => {
-			if (searchQuery.trim().length >= 2 && !showAdvanced) {
+			if (
+				searchCategory === "movie_tv" &&
+				searchQuery.trim().length >= 2 &&
+				!showAdvanced
+			) {
 				Promise.all([
 					APIService.searchMovies(searchQuery),
 					APIService.searchTV(searchQuery),
@@ -232,7 +279,7 @@ export const Navbar = () => {
 			}
 		}, 300);
 		return () => clearTimeout(timer);
-	}, [searchQuery, showAdvanced]);
+	}, [searchQuery, showAdvanced, searchCategory]);
 
 	// Debounce Actor Search
 	useEffect(() => {
@@ -288,56 +335,65 @@ export const Navbar = () => {
 		setShowAdvanced(false);
 		const trimmed = searchQuery.trim();
 		if (!trimmed) return;
-		const moodMatches = findMoodKeywords(trimmed);
-		const resolvedGenreIds = resolveSearchGenreIds(
-			trimmed,
-			allGenres,
-		);
-		if (resolvedGenreIds.length > 0) {
-			const params = new URLSearchParams();
-			params.append(
-				"with_genres",
-				resolvedGenreIds.join(","),
+		const params = new URLSearchParams();
+		params.append("searchCategory", searchCategory);
+		params.append("q", trimmed);
+
+		if (searchCategory === "actor") {
+			try {
+				const people =
+					await APIService.searchPerson(trimmed);
+				const best = people[0];
+				if (best) {
+					params.append(
+						"with_people",
+						best.id.toString(),
+					);
+					params.append("actor_name", best.name);
+				}
+			} catch (error) {
+				console.error("Actor search failed:", error);
+			}
+		}
+
+		if (searchCategory === "mood") {
+			const moodMatches = findMoodKeywords(trimmed);
+			const resolvedGenreIds = resolveSearchGenreIds(
+				trimmed,
+				allGenres,
 			);
+			if (resolvedGenreIds.length > 0) {
+				params.append(
+					"with_genres",
+					resolvedGenreIds.join(","),
+				);
+			}
 			if (moodMatches.length > 0) {
 				params.append("mood", moodMatches.join(","));
 			}
-			navigate(`/search?${params.toString()}`);
-			setSearchQuery("");
-			return;
 		}
 
-		try {
-			const people = await APIService.searchPerson(trimmed);
-			const best = people[0];
-			const normalizedQuery = trimmed.toLowerCase();
-			const isExact =
-				best?.name?.toLowerCase() === normalizedQuery;
-			const isMultiWordMatch =
-				normalizedQuery.split(/\s+/).length > 1 &&
-				best?.name
-					?.toLowerCase()
-					.includes(normalizedQuery);
-			if (
-				best &&
-				best.name &&
-				(isExact || isMultiWordMatch)
-			) {
-				const params = new URLSearchParams();
+		if (searchCategory === "genre") {
+			const genreIds = resolveGenreOnlyIds(
+				trimmed,
+				allGenres,
+			);
+			if (genreIds.length > 0) {
 				params.append(
-					"with_people",
-					best.id.toString(),
+					"with_genres",
+					genreIds.join(","),
 				);
-				params.append("actor_name", best.name);
-				navigate(`/search?${params.toString()}`);
-				setSearchQuery("");
-				return;
 			}
-		} catch (error) {
-			console.error("Actor search failed:", error);
 		}
 
-		navigate(`/search?q=${encodeURIComponent(trimmed)}`);
+		if (searchCategory === "year") {
+			const year = extractYear(trimmed);
+			if (year) {
+				params.append("primary_release_year", year);
+			}
+		}
+
+		navigate(`/search?${params.toString()}`);
 		setSearchQuery("");
 	};
 
@@ -345,6 +401,7 @@ export const Navbar = () => {
 		setShowAdvanced(false);
 		setShowSuggestions(false);
 		const params = new URLSearchParams();
+		params.append("searchCategory", "movie_tv");
 		if (filterGenres.length > 0)
 			params.append("with_genres", filterGenres.join(","));
 		if (selectedActor)
@@ -407,7 +464,21 @@ export const Navbar = () => {
 						</div>
 						<input
 							className="input-glass nav-search-input-glass"
-							placeholder="Search movies, genres, moods..."
+							placeholder={
+								searchCategory ===
+								"movie_tv"
+									? "Search movie or TV show..."
+									: searchCategory ===
+										  "actor"
+										? "Search actor..."
+										: searchCategory ===
+											  "mood"
+											? "Search mood..."
+											: searchCategory ===
+												  "genre"
+												? "Search genre..."
+												: "Search release year..."
+							}
 							type="text"
 							value={searchQuery}
 							onChange={(e) =>
@@ -450,6 +521,32 @@ export const Navbar = () => {
 								tune
 							</span>
 						</button>
+					</div>
+
+					<div className="nav-search-categories">
+						{searchCategories.map(
+							(category) => (
+								<button
+									key={
+										category.id
+									}
+									type="button"
+									className={`nav-search-category-chip ${searchCategory === category.id ? "active" : ""}`}
+									onClick={() => {
+										setSearchCategory(
+											category.id,
+										);
+										setShowSuggestions(
+											false,
+										);
+									}}
+								>
+									{
+										category.label
+									}
+								</button>
+							),
+						)}
 					</div>
 
 					{/* Autocomplete Dropdown */}

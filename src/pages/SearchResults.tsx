@@ -1,45 +1,118 @@
-import { useState, useEffect, useRef, useCallback } from "react";
-import { useSearchParams } from "react-router-dom";
-import { APIService, type Movie, type TVShow } from "../services/api";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useSearchParams, useNavigate } from "react-router-dom";
+import {
+	APIService,
+	type Movie,
+	type TVShow,
+	type Genre,
+} from "../services/api";
 import { MovieCard } from "../components/MovieCard";
 import "../styles/Category.css";
 
 type SearchResultItem = (Movie | TVShow) & { media_type: "movie" | "tv" };
+type SearchCategory = "movie_tv" | "actor" | "mood" | "genre" | "year";
+
+const CATEGORY_OPTIONS: { id: SearchCategory; label: string }[] = [
+	{ id: "movie_tv", label: "Movie/TV Show" },
+	{ id: "actor", label: "Actor" },
+	{ id: "mood", label: "Mood" },
+	{ id: "genre", label: "Genre" },
+	{ id: "year", label: "Release Year" },
+];
+
+const MOOD_GENRE_MAP: Record<string, number[]> = {
+	energetic: [28, 878],
+	chill: [35, 10749],
+	adventurous: [12, 14],
+	melancholic: [18],
+	laughter: [35],
+	tears: [18, 10749],
+	adrenaline: [28, 53],
+	fear: [27],
+	dark: [53, 27, 80],
+	light: [35, 10749, 10751],
+	gritty: [80, 18, 53],
+	twist: [9648, 53],
+	happy: [35, 10749, 10751],
+	ambiguous: [18, 9648],
+};
+
+const MOOD_KEYWORDS = Object.keys(MOOD_GENRE_MAP);
+
+const formatMoodTag = (value: string) =>
+	value
+		.split(/\s+|-/)
+		.filter(Boolean)
+		.map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+		.join(" ");
+
+const extractYear = (value: string): string => {
+	const trimmed = value.trim();
+	if (/^(19|20)\d{2}$/.test(trimmed)) return trimmed;
+	const match = trimmed.match(/(19|20)\d{2}/);
+	return match?.[0] || "";
+};
+
+const parseGenreIds = (value: string): number[] =>
+	value
+		.split(",")
+		.map((id) => Number(id.trim()))
+		.filter((id) => Number.isFinite(id) && id > 0);
 
 export default function SearchResults() {
 	const [searchParams] = useSearchParams();
+	const navigate = useNavigate();
 
 	const query = searchParams.get("q") || "";
-	const with_genres = searchParams.get("with_genres") || "";
-	const with_people =
+	const searchCategoryParam = searchParams.get("searchCategory") || "";
+	const withGenresParam = searchParams.get("with_genres") || "";
+	const withPeopleParam =
 		searchParams.get("with_people") ||
 		searchParams.get("actor") ||
 		"";
 	const moodParam = searchParams.get("mood") || "";
-	const actorName = searchParams.get("actor_name") || "";
-	const primary_release_year =
-		searchParams.get("primary_release_year") || "";
-	const vote_average_gte = searchParams.get("vote_average.gte") || "";
+	const actorNameParam = searchParams.get("actor_name") || "";
+	const releaseYearParam = searchParams.get("primary_release_year") || "";
+	const minScoreParam = searchParams.get("vote_average.gte") || "";
 
-	const hasAdvanced = Boolean(
-		with_genres ||
-		with_people ||
-		primary_release_year ||
-		vote_average_gte,
-	);
-
+	const [allGenres, setAllGenres] = useState<Genre[]>([]);
 	const [movies, setMovies] = useState<SearchResultItem[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [page, setPage] = useState(1);
 	const [loadingMore, setLoadingMore] = useState(false);
 	const [hasMore, setHasMore] = useState(true);
+	const [resolvedActorName, setResolvedActorName] =
+		useState(actorNameParam);
 
 	const seenIds = useRef<Set<string>>(new Set());
 	const actorResultsRef = useRef<SearchResultItem[]>([]);
 	const sentinelRef = useRef<HTMLDivElement | null>(null);
 	const observerRef = useRef<IntersectionObserver | null>(null);
 
-	const isActorSearch = Boolean(with_people && !query.trim());
+	const activeCategory: SearchCategory = useMemo(() => {
+		if (
+			searchCategoryParam === "movie_tv" ||
+			searchCategoryParam === "actor" ||
+			searchCategoryParam === "mood" ||
+			searchCategoryParam === "genre" ||
+			searchCategoryParam === "year"
+		) {
+			return searchCategoryParam;
+		}
+		if (withPeopleParam && !query.trim()) return "actor";
+		if (releaseYearParam) return "year";
+		if (moodParam) return "mood";
+		if (withGenresParam) return "genre";
+		return "movie_tv";
+	}, [
+		searchCategoryParam,
+		withPeopleParam,
+		query,
+		releaseYearParam,
+		moodParam,
+		withGenresParam,
+	]);
+
 	const actorPageSize = 24;
 	const paginateResults = (
 		items: SearchResultItem[],
@@ -49,80 +122,242 @@ export default function SearchResults() {
 		return items.slice(start, start + actorPageSize);
 	};
 
-	const moodKeywords = [
-		"energetic",
-		"chill",
-		"adventurous",
-		"melancholic",
-		"laughter",
-		"tears",
-		"adrenaline",
-		"fear",
-		"dark",
-		"light",
-		"gritty",
-		"twist",
-		"happy",
-		"ambiguous",
-	];
+	const resolveGenreOnlyIds = useCallback(
+		(searchText: string): number[] => {
+			const normalized = searchText.trim().toLowerCase();
+			if (!normalized || allGenres.length === 0) return [];
+			const tokens = normalized.split(/\s+/).filter(Boolean);
 
-	const formatMoodTag = (value: string) =>
-		value
-			.split(/\s+|-/)
-			.filter(Boolean)
-			.map(
-				(part) =>
-					part.charAt(0).toUpperCase() +
-					part.slice(1),
-			)
-			.join(" ");
+			return allGenres
+				.filter((genre) => {
+					const name = genre.name.toLowerCase();
+					return (
+						normalized === name ||
+						(normalized.length >= 3 &&
+							name.includes(
+								normalized,
+							)) ||
+						tokens.some(
+							(token) =>
+								token === name,
+						)
+					);
+				})
+				.map((genre) => genre.id);
+		},
+		[allGenres],
+	);
 
-	const moodMatches = (() => {
+	const resolveMoodGenreIds = useCallback(
+		(searchText: string): number[] => {
+			const normalized = searchText.trim().toLowerCase();
+			if (!normalized) return [];
+
+			const genreIds = new Set<number>();
+			for (const [keyword, ids] of Object.entries(
+				MOOD_GENRE_MAP,
+			)) {
+				if (normalized.includes(keyword)) {
+					ids.forEach((id) => genreIds.add(id));
+				}
+			}
+			resolveGenreOnlyIds(searchText).forEach((id) =>
+				genreIds.add(id),
+			);
+			return Array.from(genreIds);
+		},
+		[resolveGenreOnlyIds],
+	);
+
+	const derivedGenreIds = useMemo(() => {
+		if (activeCategory === "mood") {
+			const ids = resolveMoodGenreIds(query);
+			return ids.length > 0
+				? ids
+				: parseGenreIds(withGenresParam);
+		}
+		if (activeCategory === "genre") {
+			const ids = resolveGenreOnlyIds(query);
+			return ids.length > 0
+				? ids
+				: parseGenreIds(withGenresParam);
+		}
+		if (activeCategory === "movie_tv") {
+			return parseGenreIds(withGenresParam);
+		}
+		return [];
+	}, [
+		activeCategory,
+		query,
+		withGenresParam,
+		resolveMoodGenreIds,
+		resolveGenreOnlyIds,
+	]);
+
+	const derivedYear = useMemo(() => {
+		if (activeCategory === "year") {
+			return releaseYearParam || extractYear(query);
+		}
+		return releaseYearParam;
+	}, [activeCategory, releaseYearParam, query]);
+
+	const moodMatches = useMemo(() => {
+		if (activeCategory !== "mood") return [];
 		if (moodParam.trim()) {
 			return moodParam
 				.split(",")
-				.map((m) => m.trim())
+				.map((mood) => mood.trim())
 				.filter(Boolean);
 		}
 		const normalized = query.trim().toLowerCase();
 		if (!normalized) return [];
-		return moodKeywords.filter((keyword) =>
+		return MOOD_KEYWORDS.filter((keyword) =>
 			normalized.includes(keyword),
 		);
-	})();
+	}, [activeCategory, moodParam, query]);
 
-	// Build filter config
-	const getMovieFilters = () => {
+	const hasDiscoverFilters =
+		derivedGenreIds.length > 0 ||
+		Boolean(derivedYear || minScoreParam || withPeopleParam);
+
+	const hasSearchCriteria = useMemo(() => {
+		if (activeCategory === "actor") {
+			return Boolean(query.trim() || withPeopleParam);
+		}
+		if (activeCategory === "movie_tv") {
+			return Boolean(query.trim() || hasDiscoverFilters);
+		}
+		if (activeCategory === "year") {
+			return Boolean(derivedYear);
+		}
+		if (activeCategory === "mood" || activeCategory === "genre") {
+			return Boolean(
+				derivedGenreIds.length > 0 || query.trim(),
+			);
+		}
+		return Boolean(query.trim());
+	}, [
+		activeCategory,
+		query,
+		withPeopleParam,
+		hasDiscoverFilters,
+		derivedYear,
+		derivedGenreIds,
+	]);
+
+	const getMovieFilters = useCallback(() => {
 		const filters: Record<string, string> = {
 			sort_by: "popularity.desc",
 		};
-		if (with_genres) filters.with_genres = with_genres;
-		if (with_people) filters.with_people = with_people;
-		if (primary_release_year)
-			filters.primary_release_year = primary_release_year;
-		if (vote_average_gte)
-			filters["vote_average.gte"] = vote_average_gte;
+		if (derivedGenreIds.length > 0) {
+			filters.with_genres = derivedGenreIds.join(",");
+		}
+		if (activeCategory === "movie_tv" && withPeopleParam) {
+			filters.with_people = withPeopleParam;
+		}
+		if (derivedYear) {
+			filters.primary_release_year = derivedYear;
+		}
+		if (minScoreParam) {
+			filters["vote_average.gte"] = minScoreParam;
+		}
 		return filters;
-	};
+	}, [
+		derivedGenreIds,
+		activeCategory,
+		withPeopleParam,
+		derivedYear,
+		minScoreParam,
+	]);
 
-	const getTVFilters = () => {
+	const getTVFilters = useCallback(() => {
 		const filters: Record<string, string> = {
 			sort_by: "popularity.desc",
 		};
-		if (with_genres) filters.with_genres = with_genres;
-		if (with_people) filters.with_people = with_people;
-		if (primary_release_year)
-			filters.first_air_date_year = primary_release_year;
-		if (vote_average_gte)
-			filters["vote_average.gte"] = vote_average_gte;
+		if (derivedGenreIds.length > 0) {
+			filters.with_genres = derivedGenreIds.join(",");
+		}
+		if (activeCategory === "movie_tv" && withPeopleParam) {
+			filters.with_people = withPeopleParam;
+		}
+		if (derivedYear) {
+			filters.first_air_date_year = derivedYear;
+		}
+		if (minScoreParam) {
+			filters["vote_average.gte"] = minScoreParam;
+		}
 		return filters;
+	}, [
+		derivedGenreIds,
+		activeCategory,
+		withPeopleParam,
+		derivedYear,
+		minScoreParam,
+	]);
+
+	const handleCategorySelect = (category: SearchCategory) => {
+		const params = new URLSearchParams();
+		params.set("searchCategory", category);
+		if (query.trim()) {
+			params.set("q", query.trim());
+		}
+
+		if (category === "mood") {
+			const moodIds = resolveMoodGenreIds(query);
+			if (moodIds.length > 0) {
+				params.set("with_genres", moodIds.join(","));
+			}
+			const matchedMoods = MOOD_KEYWORDS.filter((keyword) =>
+				query.toLowerCase().includes(keyword),
+			);
+			if (matchedMoods.length > 0) {
+				params.set("mood", matchedMoods.join(","));
+			}
+		}
+
+		if (category === "genre") {
+			const genreIds = resolveGenreOnlyIds(query);
+			if (genreIds.length > 0) {
+				params.set("with_genres", genreIds.join(","));
+			}
+		}
+
+		if (category === "year") {
+			const year = extractYear(query);
+			if (year) {
+				params.set("primary_release_year", year);
+			}
+		}
+
+		navigate(`/search?${params.toString()}`);
 	};
 
 	useEffect(() => {
+		Promise.all([APIService.getGenres(), APIService.getTVGenres()])
+			.then(([movieGenres, tvGenres]) => {
+				const byId = new Map<number, Genre>();
+				movieGenres.forEach((genre) =>
+					byId.set(genre.id, genre),
+				);
+				tvGenres.forEach((genre) => {
+					if (!byId.has(genre.id))
+						byId.set(genre.id, genre);
+				});
+				setAllGenres(Array.from(byId.values()));
+			})
+			.catch(console.error);
+	}, []);
+
+	useEffect(() => {
+		setResolvedActorName(actorNameParam);
+	}, [actorNameParam]);
+
+	useEffect(() => {
 		const fetchResults = async () => {
-			if (!query.trim() && !hasAdvanced) {
+			if (!hasSearchCriteria) {
 				setMovies([]);
 				setLoading(false);
+				setHasMore(false);
 				return;
 			}
 
@@ -133,8 +368,31 @@ export default function SearchResults() {
 
 			try {
 				let results: SearchResultItem[] = [];
-				if (isActorSearch) {
-					const personId = Number(with_people);
+
+				if (activeCategory === "actor") {
+					let personId = Number(withPeopleParam);
+					let actorDisplayName = actorNameParam;
+
+					if (!personId && query.trim()) {
+						const people =
+							await APIService.searchPerson(
+								query,
+							);
+						const best = people[0];
+						if (best) {
+							personId = best.id;
+							actorDisplayName =
+								best.name;
+						}
+					}
+
+					if (!personId) {
+						setMovies([]);
+						setHasMore(false);
+						return;
+					}
+
+					setResolvedActorName(actorDisplayName);
 					const [movieCredits, tvCredits] =
 						await Promise.all([
 							APIService.getMovieCreditsByPerson(
@@ -144,15 +402,16 @@ export default function SearchResults() {
 								personId,
 							),
 						]);
+
 					const wrappedMovies = movieCredits.map(
-						(m) => ({
-							...m,
+						(movie) => ({
+							...movie,
 							media_type: "movie" as const,
 						}),
 					);
 					const wrappedTV = tvCredits.map(
-						(t) => ({
-							...t,
+						(show) => ({
+							...show,
 							media_type: "tv" as const,
 						}),
 					);
@@ -164,7 +423,10 @@ export default function SearchResults() {
 							(b.vote_average || 0) -
 							(a.vote_average || 0),
 					);
-				} else if (query.trim()) {
+				} else if (
+					activeCategory === "movie_tv" &&
+					query.trim()
+				) {
 					const [movieRes, tvRes] =
 						await Promise.all([
 							APIService.searchMovies(
@@ -177,13 +439,13 @@ export default function SearchResults() {
 							),
 						]);
 					const wrappedMovies = movieRes.map(
-						(m) => ({
-							...m,
+						(movie) => ({
+							...movie,
 							media_type: "movie" as const,
 						}),
 					);
-					const wrappedTV = tvRes.map((t) => ({
-						...t,
+					const wrappedTV = tvRes.map((show) => ({
+						...show,
 						media_type: "tv" as const,
 					}));
 					results = [
@@ -194,7 +456,7 @@ export default function SearchResults() {
 							(b.vote_average || 0) -
 							(a.vote_average || 0),
 					);
-				} else if (hasAdvanced) {
+				} else {
 					const [movieRes, tvRes] =
 						await Promise.all([
 							APIService.discoverMovies(
@@ -207,13 +469,13 @@ export default function SearchResults() {
 							),
 						]);
 					const wrappedMovies = movieRes.map(
-						(m) => ({
-							...m,
+						(movie) => ({
+							...movie,
 							media_type: "movie" as const,
 						}),
 					);
-					const wrappedTV = tvRes.map((t) => ({
-						...t,
+					const wrappedTV = tvRes.map((show) => ({
+						...show,
 						media_type: "tv" as const,
 					}));
 					results = [
@@ -226,15 +488,15 @@ export default function SearchResults() {
 					);
 				}
 
-				const unique = results.filter((m) => {
-					const uniqueId = `${m.media_type}-${m.id}`;
+				const unique = results.filter((item) => {
+					const uniqueId = `${item.media_type}-${item.id}`;
 					if (seenIds.current.has(uniqueId))
 						return false;
 					seenIds.current.add(uniqueId);
 					return true;
 				});
 
-				if (isActorSearch) {
+				if (activeCategory === "actor") {
 					actorResultsRef.current = unique;
 					const firstPage = paginateResults(
 						unique,
@@ -249,11 +511,10 @@ export default function SearchResults() {
 					actorResultsRef.current = [];
 					setMovies(unique);
 					setPage(2);
-					if (results.length === 0)
-						setHasMore(false);
+					setHasMore(results.length > 0);
 				}
-			} catch (err) {
-				console.error("Search failed:", err);
+			} catch (error) {
+				console.error("Search failed:", error);
 			} finally {
 				setLoading(false);
 			}
@@ -261,13 +522,117 @@ export default function SearchResults() {
 
 		fetchResults();
 	}, [
+		activeCategory,
 		query,
-		hasAdvanced,
-		with_genres,
-		with_people,
-		primary_release_year,
-		vote_average_gte,
-		isActorSearch,
+		withPeopleParam,
+		actorNameParam,
+		hasSearchCriteria,
+		derivedGenreIds,
+		derivedYear,
+		moodParam,
+		minScoreParam,
+		getMovieFilters,
+		getTVFilters,
+	]);
+
+	const loadMore = useCallback(async () => {
+		if (loadingMore || !hasMore) return;
+		setLoadingMore(true);
+
+		try {
+			if (activeCategory === "actor") {
+				const nextPageItems = paginateResults(
+					actorResultsRef.current,
+					page,
+				);
+				if (nextPageItems.length === 0) {
+					setHasMore(false);
+				} else {
+					setMovies((prev) => [
+						...prev,
+						...nextPageItems,
+					]);
+					setPage((prev) => prev + 1);
+				}
+				return;
+			}
+
+			let results: SearchResultItem[] = [];
+			if (activeCategory === "movie_tv" && query.trim()) {
+				const [movieRes, tvRes] = await Promise.all([
+					APIService.searchMovies(query, page),
+					APIService.searchTV(query, page),
+				]);
+				const wrappedMovies = movieRes.map((movie) => ({
+					...movie,
+					media_type: "movie" as const,
+				}));
+				const wrappedTV = tvRes.map((show) => ({
+					...show,
+					media_type: "tv" as const,
+				}));
+				results = [...wrappedMovies, ...wrappedTV].sort(
+					(a, b) =>
+						(b.vote_average || 0) -
+						(a.vote_average || 0),
+				);
+			} else {
+				const [movieRes, tvRes] = await Promise.all([
+					APIService.discoverMovies(
+						getMovieFilters(),
+						page,
+					),
+					APIService.discoverTV(
+						getTVFilters(),
+						page,
+					),
+				]);
+				const wrappedMovies = movieRes.map((movie) => ({
+					...movie,
+					media_type: "movie" as const,
+				}));
+				const wrappedTV = tvRes.map((show) => ({
+					...show,
+					media_type: "tv" as const,
+				}));
+				results = [...wrappedMovies, ...wrappedTV].sort(
+					(a, b) =>
+						(b.vote_average || 0) -
+						(a.vote_average || 0),
+				);
+			}
+
+			if (results.length === 0) {
+				setHasMore(false);
+				return;
+			}
+
+			const unique = results.filter((item) => {
+				const uniqueId = `${item.media_type}-${item.id}`;
+				if (seenIds.current.has(uniqueId)) return false;
+				seenIds.current.add(uniqueId);
+				return true;
+			});
+
+			if (unique.length === 0) {
+				setHasMore(false);
+			} else {
+				setMovies((prev) => [...prev, ...unique]);
+				setPage((prev) => prev + 1);
+			}
+		} catch (error) {
+			console.error("Search pagination error:", error);
+		} finally {
+			setLoadingMore(false);
+		}
+	}, [
+		activeCategory,
+		query,
+		page,
+		loadingMore,
+		hasMore,
+		getMovieFilters,
+		getTVFilters,
 	]);
 
 	const attachObserver = useCallback(() => {
@@ -285,98 +650,15 @@ export default function SearchResults() {
 			},
 			{ rootMargin: "0px 0px 600px 0px" },
 		);
-		if (sentinelRef.current)
+		if (sentinelRef.current) {
 			observerRef.current.observe(sentinelRef.current);
-	}, [hasMore, loadingMore, loading]);
+		}
+	}, [hasMore, loadingMore, loading, loadMore]);
 
 	useEffect(() => {
 		attachObserver();
 		return () => observerRef.current?.disconnect();
 	}, [attachObserver]);
-
-	const loadMore = async () => {
-		if (loadingMore || !hasMore) return;
-		setLoadingMore(true);
-		try {
-			let results: SearchResultItem[] = [];
-			if (isActorSearch) {
-				const nextPageItems = paginateResults(
-					actorResultsRef.current,
-					page,
-				);
-				if (nextPageItems.length === 0) {
-					setHasMore(false);
-				} else {
-					setMovies((prev) => [
-						...prev,
-						...nextPageItems,
-					]);
-					setPage((prev) => prev + 1);
-				}
-				return;
-			} else if (query.trim()) {
-				const [movieRes, tvRes] = await Promise.all([
-					APIService.searchMovies(query, page),
-					APIService.searchTV(query, page),
-				]);
-				const wrappedMovies = movieRes.map((m) => ({
-					...m,
-					media_type: "movie" as const,
-				}));
-				const wrappedTV = tvRes.map((t) => ({
-					...t,
-					media_type: "tv" as const,
-				}));
-				results = [...wrappedMovies, ...wrappedTV].sort(
-					(a, b) =>
-						(b.vote_average || 0) -
-						(a.vote_average || 0),
-				);
-			} else if (hasAdvanced) {
-				const [movieRes, tvRes] = await Promise.all([
-					APIService.discoverMovies(
-						getMovieFilters(),
-						page,
-					),
-					APIService.discoverTV(
-						getTVFilters(),
-						page,
-					),
-				]);
-				const wrappedMovies = movieRes.map((m) => ({
-					...m,
-					media_type: "movie" as const,
-				}));
-				const wrappedTV = tvRes.map((t) => ({
-					...t,
-					media_type: "tv" as const,
-				}));
-				results = [...wrappedMovies, ...wrappedTV].sort(
-					(a, b) =>
-						(b.vote_average || 0) -
-						(a.vote_average || 0),
-				);
-			}
-
-			if (results.length === 0) {
-				setHasMore(false);
-			} else {
-				const unique = results.filter((m) => {
-					const uniqueId = `${m.media_type}-${m.id}`;
-					if (seenIds.current.has(uniqueId))
-						return false;
-					seenIds.current.add(uniqueId);
-					return true;
-				});
-				setMovies((prev) => [...prev, ...unique]);
-				setPage((prev) => prev + 1);
-			}
-		} catch (err) {
-			console.error("Search pagination error:", err);
-		} finally {
-			setLoadingMore(false);
-		}
-	};
 
 	if (loading) {
 		return (
@@ -399,41 +681,74 @@ export default function SearchResults() {
 		);
 	}
 
+	const categoryLabel =
+		CATEGORY_OPTIONS.find(
+			(category) => category.id === activeCategory,
+		)?.label || "Search";
+
 	return (
 		<div className="category-page animate-in fade-in">
 			<div className="category-header">
 				<h1 className="category-title">
-					{query
-						? `Results for "${query}"`
-						: hasAdvanced
-							? "Advanced Search Results"
-							: "Search"}
+					{activeCategory === "actor"
+						? `Results for Actor "${resolvedActorName || query}"`
+						: query
+							? `Results for "${query}"`
+							: `${categoryLabel} Results`}
 				</h1>
-				{(moodMatches.length > 0 || actorName) && (
-					<div className="search-tags">
-						{moodMatches.map((mood) => (
-							<span
-								key={`mood-${mood}`}
-								className="search-tag"
-							>
-								Mood:{" "}
-								{formatMoodTag(
-									mood,
-								)}
-							</span>
-						))}
-						{actorName && (
+
+				<div className="search-category-list">
+					{CATEGORY_OPTIONS.map((category) => (
+						<button
+							key={category.id}
+							type="button"
+							className={`search-category-chip ${activeCategory === category.id ? "active" : ""}`}
+							onClick={() =>
+								handleCategorySelect(
+									category.id,
+								)
+							}
+						>
+							{category.label}
+						</button>
+					))}
+				</div>
+
+				<div className="search-tags">
+					<span className="search-tag">
+						Category: {categoryLabel}
+					</span>
+					{moodMatches.map((mood) => (
+						<span
+							key={`mood-${mood}`}
+							className="search-tag"
+						>
+							Mood:{" "}
+							{formatMoodTag(mood)}
+						</span>
+					))}
+					{activeCategory === "actor" &&
+						resolvedActorName && (
 							<span className="search-tag">
-								Cast:{" "}
-								{actorName}
+								Actor:{" "}
+								{
+									resolvedActorName
+								}
 							</span>
 						)}
-					</div>
-				)}
+					{activeCategory === "year" &&
+						derivedYear && (
+							<span className="search-tag">
+								Release Year:{" "}
+								{derivedYear}
+							</span>
+						)}
+				</div>
+
 				<p className="category-description">
 					{movies.length > 0
-						? `Found ${movies.length}+ titles matching your criteria.`
-						: "No results found. Try different filters or search terms."}
+						? `Found ${movies.length}+ titles matching your ${categoryLabel.toLowerCase()} search.`
+						: "No results found. Try another category or adjust your search term."}
 				</p>
 			</div>
 
