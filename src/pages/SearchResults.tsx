@@ -11,7 +11,12 @@ export default function SearchResults() {
 
 	const query = searchParams.get("q") || "";
 	const with_genres = searchParams.get("with_genres") || "";
-	const with_people = searchParams.get("with_people") || "";
+	const with_people =
+		searchParams.get("with_people") ||
+		searchParams.get("actor") ||
+		"";
+	const moodParam = searchParams.get("mood") || "";
+	const actorName = searchParams.get("actor_name") || "";
 	const primary_release_year =
 		searchParams.get("primary_release_year") || "";
 	const vote_average_gte = searchParams.get("vote_average.gte") || "";
@@ -32,6 +37,48 @@ export default function SearchResults() {
 	const seenIds = useRef<Set<string>>(new Set());
 	const sentinelRef = useRef<HTMLDivElement | null>(null);
 	const observerRef = useRef<IntersectionObserver | null>(null);
+
+	const moodKeywords = [
+		"energetic",
+		"chill",
+		"adventurous",
+		"melancholic",
+		"laughter",
+		"tears",
+		"adrenaline",
+		"fear",
+		"dark",
+		"light",
+		"gritty",
+		"twist",
+		"happy",
+		"ambiguous",
+	];
+
+	const formatMoodTag = (value: string) =>
+		value
+			.split(/\s+|-/)
+			.filter(Boolean)
+			.map(
+				(part) =>
+					part.charAt(0).toUpperCase() +
+					part.slice(1),
+			)
+			.join(" ");
+
+	const moodMatches = (() => {
+		if (moodParam.trim()) {
+			return moodParam
+				.split(",")
+				.map((m) => m.trim())
+				.filter(Boolean);
+		}
+		const normalized = query.trim().toLowerCase();
+		if (!normalized) return [];
+		return moodKeywords.filter((keyword) =>
+			normalized.includes(keyword),
+		);
+	})();
 
 	// Build filter config
 	const getMovieFilters = () => {
@@ -288,10 +335,31 @@ export default function SearchResults() {
 							? "Advanced Search Results"
 							: "Search"}
 				</h1>
+				{(moodMatches.length > 0 || actorName) && (
+					<div className="search-tags">
+						{moodMatches.map((mood) => (
+							<span
+								key={`mood-${mood}`}
+								className="search-tag"
+							>
+								Mood:{" "}
+								{formatMoodTag(
+									mood,
+								)}
+							</span>
+						))}
+						{actorName && (
+							<span className="search-tag">
+								Cast:{" "}
+								{actorName}
+							</span>
+						)}
+					</div>
+				)}
 				<p className="category-description">
 					{movies.length > 0
-						? `Found ${movies.length}+ movies matching your criteria.`
-						: "No movies found. Try different filters or search terms."}
+						? `Found ${movies.length}+ titles matching your criteria.`
+						: "No results found. Try different filters or search terms."}
 				</p>
 			</div>
 

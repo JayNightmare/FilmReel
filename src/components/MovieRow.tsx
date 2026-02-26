@@ -4,14 +4,17 @@ import { APIService } from "../services/api";
 import type { Movie, TVShow, Genre } from "../services/api";
 import { MovieCard } from "./MovieCard";
 
+type RowMediaType = "movie" | "tv" | "mixed";
+type RowItem = (Movie | TVShow) & { _mediaType?: "movie" | "tv" };
+
 interface MovieRowProps {
-    genre?: Genre;
-    title: string;
-    isTrending?: boolean;
-    initialMovies: (Movie | TVShow)[];
-    staticMovies?: boolean;
-    hideViewAll?: boolean;
-    mediaType?: "movie" | "tv";
+	genre?: Genre;
+	title: string;
+	isTrending?: boolean;
+	initialMovies: RowItem[];
+	staticMovies?: boolean;
+	hideViewAll?: boolean;
+	mediaType?: RowMediaType;
 }
 
 /**
@@ -21,155 +24,200 @@ interface MovieRowProps {
  * Deduplicates movies within its own row so no card appears twice.
  */
 export const MovieRow = ({
-    genre,
-    title,
-    isTrending,
-    initialMovies,
-    staticMovies = false,
-    hideViewAll = false,
-    mediaType = "movie",
+	genre,
+	title,
+	isTrending,
+	initialMovies,
+	staticMovies = false,
+	hideViewAll = false,
+	mediaType = "movie",
 }: MovieRowProps) => {
-    const [movies, setMovies] = useState<(Movie | TVShow)[]>([]);
-    const [page, setPage] = useState(2);
-    const [loading, setLoading] = useState(false);
-    const [hasMore, setHasMore] = useState(true);
-    const sentinelRef = useRef<HTMLDivElement | null>(null);
-    const observerRef = useRef<IntersectionObserver | null>(null);
-    // Track IDs already shown in THIS row to prevent duplicates within a single carousel
-    const rowSeenIds = useRef<Set<number>>(new Set());
+	const [movies, setMovies] = useState<RowItem[]>([]);
+	const [page, setPage] = useState(2);
+	const [loading, setLoading] = useState(false);
+	const [hasMore, setHasMore] = useState(true);
+	const sentinelRef = useRef<HTMLDivElement | null>(null);
+	const observerRef = useRef<IntersectionObserver | null>(null);
+	// Track IDs already shown in THIS row to prevent duplicates within a single carousel
+	const rowSeenIds = useRef<Set<string>>(new Set());
 
-    // Sync initial movies from props & register within the row-level dedup set.
-    useEffect(() => {
-        if (initialMovies.length === 0) return;
+	const getItemMediaType = (item: RowItem): "movie" | "tv" => {
+		if (item._mediaType) return item._mediaType;
+		return mediaType === "tv" ? "tv" : "movie";
+	};
 
-        rowSeenIds.current.clear();
-        const unique: (Movie | TVShow)[] = [];
-        for (const m of initialMovies) {
-            if (!rowSeenIds.current.has(m.id)) {
-                rowSeenIds.current.add(m.id);
-                unique.push(m);
-            }
-        }
+	const getRowKey = (item: RowItem) =>
+		`${getItemMediaType(item)}-${item.id}`;
 
-        setMovies(unique);
-        setPage(2);
-    }, [initialMovies]);
+	// Sync initial movies from props & register within the row-level dedup set.
+	useEffect(() => {
+		if (initialMovies.length === 0) return;
 
-    // Attach the IntersectionObserver to the sentinel
-    const attachObserver = useCallback(() => {
-        if (staticMovies) return;
-        if (observerRef.current) observerRef.current.disconnect();
+		rowSeenIds.current.clear();
+		const unique: RowItem[] = [];
+		for (const m of initialMovies) {
+			const key = getRowKey(m);
+			if (!rowSeenIds.current.has(key)) {
+				rowSeenIds.current.add(key);
+				unique.push(m);
+			}
+		}
 
-        observerRef.current = new IntersectionObserver(
-            (entries) => {
-                if (entries[0].isIntersecting && hasMore && !loading) {
-                    loadMore();
-                }
-            },
-            { rootMargin: "0px 400px 0px 0px" },
-        );
+		setMovies(unique);
+		setPage(2);
+	}, [initialMovies]);
 
-        if (sentinelRef.current) {
-            observerRef.current.observe(sentinelRef.current);
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [hasMore, loading]);
+	// Attach the IntersectionObserver to the sentinel
+	const attachObserver = useCallback(() => {
+		if (staticMovies) return;
+		if (observerRef.current) observerRef.current.disconnect();
 
-    useEffect(() => {
-        attachObserver();
-        return () => observerRef.current?.disconnect();
-    }, [attachObserver]);
+		observerRef.current = new IntersectionObserver(
+			(entries) => {
+				if (
+					entries[0].isIntersecting &&
+					hasMore &&
+					!loading
+				) {
+					loadMore();
+				}
+			},
+			{ rootMargin: "0px 400px 0px 0px" },
+		);
 
-    const loadMore = async () => {
-        if (loading || !hasMore) return;
-        setLoading(true);
+		if (sentinelRef.current) {
+			observerRef.current.observe(sentinelRef.current);
+		}
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [hasMore, loading]);
 
-        try {
-            let fetched: (Movie | TVShow)[] = [];
-            if (mediaType === "tv") {
-                fetched = await APIService.getPopularTV(page);
-            } else if (isTrending) {
-                fetched = await APIService.getPopularMovies(page);
-            } else if (genre) {
-                fetched = await APIService.getMoviesByGenre(genre.id, page);
-            }
+	useEffect(() => {
+		attachObserver();
+		return () => observerRef.current?.disconnect();
+	}, [attachObserver]);
 
-            if (fetched.length === 0) {
-                setHasMore(false);
-            } else {
-                const unique = fetched.filter((m) => {
-                    if (rowSeenIds.current.has(m.id)) return false;
-                    rowSeenIds.current.add(m.id);
-                    return true;
-                });
+	const loadMore = async () => {
+		if (loading || !hasMore) return;
+		setLoading(true);
 
-                setMovies((prev) => [...prev, ...unique]);
-                setPage((prev) => prev + 1);
-            }
-        } catch (err) {
-            console.error("MovieRow pagination error:", err);
-        } finally {
-            setLoading(false);
-        }
-    };
+		try {
+			let fetched: RowItem[] = [];
+			if (mediaType === "mixed") {
+				const [movieRes, tvRes] = await Promise.all([
+					APIService.getPopularMovies(page),
+					APIService.getPopularTV(page),
+				]);
+				fetched = [
+					...movieRes.map((m) => ({
+						...m,
+						_mediaType: "movie" as const,
+					})),
+					...tvRes.map((t) => ({
+						...t,
+						_mediaType: "tv" as const,
+					})),
+				].sort(
+					(a, b) =>
+						(b.vote_average || 0) -
+						(a.vote_average || 0),
+				);
+			} else if (mediaType === "tv") {
+				fetched = await APIService.getPopularTV(page);
+			} else if (isTrending) {
+				fetched =
+					await APIService.getPopularMovies(page);
+			} else if (genre) {
+				fetched = await APIService.getMoviesByGenre(
+					genre.id,
+					page,
+				);
+			}
 
-    if (movies.length === 0 && !loading) return null;
+			if (fetched.length === 0) {
+				setHasMore(false);
+			} else {
+				const unique = fetched.filter((m) => {
+					const key = getRowKey(m);
+					if (rowSeenIds.current.has(key))
+						return false;
+					rowSeenIds.current.add(key);
+					return true;
+				});
 
-    return (
-        <section className="category-section animate-fade-in-up">
-            <div className="category-header">
-                <h3 className="category-title">{title}</h3>
-                {!hideViewAll && (
-                    <Link
-                        to={
-                            isTrending
-                                ? "/category/popular"
-                                : `/category/${genre?.id}`
-                        }
-                        className="category-link"
-                    >
-                        View All
-                    </Link>
-                )}
-            </div>
+				setMovies((prev) => [...prev, ...unique]);
+				setPage((prev) => prev + 1);
+			}
+		} catch (err) {
+			console.error("MovieRow pagination error:", err);
+		} finally {
+			setLoading(false);
+		}
+	};
 
-            <div className="carousel-container">
-                {movies.map((movie) => (
-                    <MovieCard
-                        key={movie.id}
-                        movie={movie}
-                        mediaType={mediaType}
-                    />
-                ))}
+	if (movies.length === 0 && !loading) return null;
 
-                {/* Sentinel: sits at the end of the row and triggers the next page load */}
-                <div
-                    ref={sentinelRef}
-                    style={{ minWidth: "1px", minHeight: "1px", flexShrink: 0 }}
-                    aria-hidden="true"
-                />
+	return (
+		<section className="category-section animate-fade-in-up">
+			<div className="category-header">
+				<h3 className="category-title">{title}</h3>
+				{!hideViewAll && (
+					<Link
+						to={
+							isTrending
+								? "/category/popular"
+								: `/category/${genre?.id}`
+						}
+						className="category-link"
+					>
+						View All
+					</Link>
+				)}
+			</div>
 
-                {loading && (
-                    <div
-                        style={{
-                            padding: "24px",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                        }}
-                    >
-                        <span
-                            className="material-symbols-outlined animate-pulse"
-                            style={{
-                                color: "var(--text-secondary)",
-                                fontSize: "24px",
-                            }}
-                        >
-                            autorenew
-                        </span>
-                    </div>
-                )}
-            </div>
-        </section>
-    );
+			<div className="carousel-container">
+				{movies.map((movie) => (
+					<MovieCard
+						key={getRowKey(movie)}
+						movie={movie}
+						mediaType={getItemMediaType(
+							movie,
+						)}
+					/>
+				))}
+
+				{/* Sentinel: sits at the end of the row and triggers the next page load */}
+				<div
+					ref={sentinelRef}
+					style={{
+						minWidth: "1px",
+						minHeight: "1px",
+						flexShrink: 0,
+					}}
+					aria-hidden="true"
+				/>
+
+				{loading && (
+					<div
+						style={{
+							padding: "24px",
+							display: "flex",
+							alignItems: "center",
+							justifyContent:
+								"center",
+						}}
+					>
+						<span
+							className="material-symbols-outlined animate-pulse"
+							style={{
+								color: "var(--text-secondary)",
+								fontSize: "24px",
+							}}
+						>
+							autorenew
+						</span>
+					</div>
+				)}
+			</div>
+		</section>
+	);
 };

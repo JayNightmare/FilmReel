@@ -9,6 +9,7 @@
 - Row-scoped movie deduplication in [MovieRow.tsx](file:///v:/Documents/Personal%20Projects/FilmReel/src/components/MovieRow.tsx) (replaced global dedup that was emptying rows).
 - Genre labels dynamically resolved via `GenreMap` service (seeded with TMDB's 19 standard genres).
 - Functional search: Navbar wired to `/search?q=` route with infinite scroll [SearchResults.tsx](file:///v:/Documents/Personal%20Projects/FilmReel/src/pages/SearchResults.tsx).
+- Search enhancements: mood/genre keyword mapping into advanced filters, actor-name fallback lookup in the main search, and mood/cast tags displayed on the Search Results header.
 - MovieViewer upgraded: synopsis, genre tags, poster fallback, "You Might Also Like" section.
 - API key no longer logged to console.
 - Watchlist feature: bookmark toggle on MovieCard + MovieViewer, localStorage CRUD, Account page grid.
@@ -57,5 +58,5 @@
 - Data Persistence: LocalStorage (No Backend Database).
 - Architecture: Functional Components with Hooks.
 - APIs:
-    - Video stream/information: `vidking.net`, `vidsrc.me`, `multiembed.mov`
-    - Metadata: TMDB
+     - Video stream/information: `vidking.net`, `vidsrc.me`, `multiembed.mov`
+     - Metadata: TMDB
