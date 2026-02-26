@@ -99,6 +99,7 @@ export default function SearchResults() {
 			sort_by: "popularity.desc",
 		};
 		if (with_genres) filters.with_genres = with_genres;
+		if (with_people) filters.with_people = with_people;
 		if (primary_release_year)
 			filters.first_air_date_year = primary_release_year;
 		if (vote_average_gte)
