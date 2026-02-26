@@ -35,8 +35,19 @@ export default function SearchResults() {
 	const [hasMore, setHasMore] = useState(true);
 
 	const seenIds = useRef<Set<string>>(new Set());
+	const actorResultsRef = useRef<SearchResultItem[]>([]);
 	const sentinelRef = useRef<HTMLDivElement | null>(null);
 	const observerRef = useRef<IntersectionObserver | null>(null);
+
+	const isActorSearch = Boolean(with_people && !query.trim());
+	const actorPageSize = 24;
+	const paginateResults = (
+		items: SearchResultItem[],
+		pageNumber: number,
+	) => {
+		const start = (pageNumber - 1) * actorPageSize;
+		return items.slice(start, start + actorPageSize);
+	};
 
 	const moodKeywords = [
 		"energetic",
@@ -122,7 +133,38 @@ export default function SearchResults() {
 
 			try {
 				let results: SearchResultItem[] = [];
-				if (query.trim()) {
+				if (isActorSearch) {
+					const personId = Number(with_people);
+					const [movieCredits, tvCredits] =
+						await Promise.all([
+							APIService.getMovieCreditsByPerson(
+								personId,
+							),
+							APIService.getTVCreditsByPerson(
+								personId,
+							),
+						]);
+					const wrappedMovies = movieCredits.map(
+						(m) => ({
+							...m,
+							media_type: "movie" as const,
+						}),
+					);
+					const wrappedTV = tvCredits.map(
+						(t) => ({
+							...t,
+							media_type: "tv" as const,
+						}),
+					);
+					results = [
+						...wrappedMovies,
+						...wrappedTV,
+					].sort(
+						(a, b) =>
+							(b.vote_average || 0) -
+							(a.vote_average || 0),
+					);
+				} else if (query.trim()) {
 					const [movieRes, tvRes] =
 						await Promise.all([
 							APIService.searchMovies(
@@ -192,9 +234,24 @@ export default function SearchResults() {
 					return true;
 				});
 
-				setMovies(unique);
-				setPage(2);
-				if (results.length === 0) setHasMore(false);
+				if (isActorSearch) {
+					actorResultsRef.current = unique;
+					const firstPage = paginateResults(
+						unique,
+						1,
+					);
+					setMovies(firstPage);
+					setHasMore(
+						unique.length > actorPageSize,
+					);
+					setPage(2);
+				} else {
+					actorResultsRef.current = [];
+					setMovies(unique);
+					setPage(2);
+					if (results.length === 0)
+						setHasMore(false);
+				}
 			} catch (err) {
 				console.error("Search failed:", err);
 			} finally {
@@ -210,6 +267,7 @@ export default function SearchResults() {
 		with_people,
 		primary_release_year,
 		vote_average_gte,
+		isActorSearch,
 	]);
 
 	const attachObserver = useCallback(() => {
@@ -241,7 +299,22 @@ export default function SearchResults() {
 		setLoadingMore(true);
 		try {
 			let results: SearchResultItem[] = [];
-			if (query.trim()) {
+			if (isActorSearch) {
+				const nextPageItems = paginateResults(
+					actorResultsRef.current,
+					page,
+				);
+				if (nextPageItems.length === 0) {
+					setHasMore(false);
+				} else {
+					setMovies((prev) => [
+						...prev,
+						...nextPageItems,
+					]);
+					setPage((prev) => prev + 1);
+				}
+				return;
+			} else if (query.trim()) {
 				const [movieRes, tvRes] = await Promise.all([
 					APIService.searchMovies(query, page),
 					APIService.searchTV(query, page),
