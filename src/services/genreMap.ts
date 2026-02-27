@@ -4,49 +4,62 @@
  * APIService.getGenres() resolves (see Home.tsx / Category.tsx).
  */
 const GENRE_SEED: Record<number, string> = {
-    // Movie genres
-    28: "Action",
-    12: "Adventure",
-    16: "Animation",
-    35: "Comedy",
-    80: "Crime",
-    99: "Documentary",
-    18: "Drama",
-    10751: "Family",
-    14: "Fantasy",
-    36: "History",
-    27: "Horror",
-    10402: "Music",
-    9648: "Mystery",
-    10749: "Romance",
-    878: "Sci-Fi",
-    10770: "TV Movie",
-    53: "Thriller",
-    10752: "War",
-    37: "Western",
-    // TV-specific genres
-    10759: "Action & Adventure",
-    10762: "Kids",
-    10763: "News",
-    10764: "Reality",
-    10765: "Sci-Fi & Fantasy",
-    10766: "Soap",
-    10767: "Talk",
-    10768: "War & Politics",
+	// Movie genres
+	28: "Action",
+	12: "Adventure",
+	16: "Animation",
+	35: "Comedy",
+	80: "Crime",
+	99: "Documentary",
+	18: "Drama",
+	10751: "Family",
+	14: "Fantasy",
+	36: "History",
+	27: "Horror",
+	10402: "Music",
+	9648: "Mystery",
+	10749: "Romance",
+	878: "Sci-Fi",
+	10770: "TV Movie",
+	53: "Thriller",
+	10752: "War",
+	37: "Western",
+	// TV-specific genres
+	10759: "Action & Adventure",
+	10762: "Kids",
+	10763: "News",
+	10764: "Reality",
+	10765: "Sci-Fi & Fantasy",
+	10766: "Soap",
+	10767: "Talk",
+	10768: "War & Politics",
+	// Non-assignable genre
+	0: "",
 };
 
 const genreCache = new Map<number, string>(
-    Object.entries(GENRE_SEED).map(([k, v]) => [Number(k), v]),
+	Object.entries(GENRE_SEED).map(([k, v]) => [Number(k), v]),
 );
 
 export const GenreMap = {
-    getName(id: number): string {
-        return genreCache.get(id) ?? "Film";
-    },
+	getName(id: number | string | null | undefined): string {
+		const normalizedId =
+			typeof id === "number"
+				? id
+				: typeof id === "string"
+					? Number.parseInt(id, 10)
+					: NaN;
 
-    seed(genres: Array<{ id: number; name: string }>): void {
-        for (const g of genres) {
-            genreCache.set(g.id, g.name);
-        }
-    },
+		if (Number.isNaN(normalizedId)) {
+			return "";
+		}
+
+		return genreCache.get(normalizedId) ?? "";
+	},
+
+	seed(genres: Array<{ id: number; name: string }>): void {
+		for (const g of genres) {
+			genreCache.set(g.id, g.name);
+		}
+	},
 };

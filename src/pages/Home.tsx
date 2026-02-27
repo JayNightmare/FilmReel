@@ -47,6 +47,8 @@ interface TitleOfDayPick {
 	generatedAt: number;
 }
 
+type MixedRowItem = (Movie | TVShow) & { _mediaType: "movie" | "tv" };
+
 const isFreshPick = (timestamp: number) =>
 	Date.now() - timestamp < TWELVE_HOURS_MS;
 
@@ -93,7 +95,7 @@ export default function Home() {
 	const [loading, setLoading] = useState(true);
 
 	// Vertical infinite scroll state
-	const [displayedGenreCount, setDisplayedGenreCount] = useState(3);
+	const [displayedGenreCount, setDisplayedGenreCount] = useState(10);
 	const [loadingMoreGenres, setLoadingMoreGenres] = useState(false);
 
 	// Hidden Gems
@@ -103,8 +105,12 @@ export default function Home() {
 	const [popularTV, setPopularTV] = useState<TVShow[]>([]);
 
 	// Favorite Genre rows (2 pages)
-	const [favGenreMoviesP1, setFavGenreMoviesP1] = useState<Movie[]>([]);
-	const [favGenreMoviesP2, setFavGenreMoviesP2] = useState<Movie[]>([]);
+	const [favGenreMoviesP1, setFavGenreMoviesP1] = useState<
+		MixedRowItem[]
+	>([]);
+	const [favGenreMoviesP2, setFavGenreMoviesP2] = useState<
+		MixedRowItem[]
+	>([]);
 
 	// Watch It Again — movies resolved from watched IDs
 	const [watchedLiveMovies, setWatchedLiveMovies] = useState<Movie[]>([]);
@@ -208,19 +214,67 @@ export default function Home() {
 		let cancelled = false;
 		const fetchFav = async () => {
 			try {
-				const [page1, page2] = await Promise.all([
-					APIService.getMoviesByGenre(
-						profile.favoriteGenreId!,
-						1,
-					),
-					APIService.getMoviesByGenre(
-						profile.favoriteGenreId!,
-						2,
-					),
-				]);
+				const [movieP1, tvP1, movieP2, tvP2] =
+					await Promise.all([
+						APIService.getMoviesByGenre(
+							profile.favoriteGenreId!,
+							1,
+						),
+						APIService.discoverTV(
+							{
+								with_genres:
+									profile.favoriteGenreId!.toString(),
+								sort_by: "popularity.desc",
+							},
+							1,
+						),
+						APIService.getMoviesByGenre(
+							profile.favoriteGenreId!,
+							2,
+						),
+						APIService.discoverTV(
+							{
+								with_genres:
+									profile.favoriteGenreId!.toString(),
+								sort_by: "popularity.desc",
+							},
+							2,
+						),
+					]);
+
+				const mixedP1: MixedRowItem[] = [
+					...movieP1.map((movie) => ({
+						...movie,
+						_mediaType: "movie" as const,
+					})),
+					...tvP1.map((show) => ({
+						...show,
+						_mediaType: "tv" as const,
+					})),
+				].sort(
+					(a, b) =>
+						(b.vote_average || 0) -
+						(a.vote_average || 0),
+				);
+
+				const mixedP2: MixedRowItem[] = [
+					...movieP2.map((movie) => ({
+						...movie,
+						_mediaType: "movie" as const,
+					})),
+					...tvP2.map((show) => ({
+						...show,
+						_mediaType: "tv" as const,
+					})),
+				].sort(
+					(a, b) =>
+						(b.vote_average || 0) -
+						(a.vote_average || 0),
+				);
+
 				if (!cancelled) {
-					setFavGenreMoviesP1(page1);
-					setFavGenreMoviesP2(page2);
+					setFavGenreMoviesP1(mixedP1);
+					setFavGenreMoviesP2(mixedP2);
 				}
 			} catch (err) {
 				console.error(
@@ -522,11 +576,8 @@ export default function Home() {
 	);
 
 	// Resolve the favorite genre name
-	const favGenreName =
-		profile.favoriteGenreId && genres.length > 0
-			? (genres.find((g) => g.id === profile.favoriteGenreId)
-					?.name ?? "Favorites")
-			: null;
+	const favGenreId = profile.favoriteGenreId;
+	const favGenreName = GenreMap.getName(favGenreId || 0);
 
 	if (loading) {
 		return (
@@ -803,7 +854,7 @@ export default function Home() {
 									<div className="hero-feature-actions">
 										<button
 											type="submit"
-											className="btn-primary hero-button"
+											className="btn-primary hero-button hero-button-primary"
 											disabled={
 												featureRequestStatus ===
 													"submitting" ||
@@ -879,7 +930,7 @@ export default function Home() {
 													`/search?searchCategory=actor&q=${encodeURIComponent(actorOfDay.name)}&with_people=${actorOfDay.id}&actor_name=${encodeURIComponent(actorOfDay.name)}`,
 												)
 											}
-											className="btn-primary hero-button"
+											className="btn-primary hero-button hero-button-primary"
 										>
 											<span className="material-symbols-outlined">
 												theater_comedy
@@ -931,7 +982,7 @@ export default function Home() {
 														: `/tv/${titleOfDay.id}`,
 												)
 											}
-											className="btn-primary hero-button"
+											className="btn-primary hero-button hero-button-primary"
 										>
 											<span className="material-symbols-outlined">
 												play_circle
@@ -999,7 +1050,7 @@ export default function Home() {
 
 			{!isAboutShortcutDismissed && (
 				<section className="home-about-shortcut glass-panel">
-					<div>
+					<div className="home-about-shortcut-header">
 						<p className="home-about-shortcut-eyebrow">
 							New here?
 						</p>
@@ -1066,17 +1117,18 @@ export default function Home() {
 			{favGenreName && favGenreMoviesP1.length > 0 && (
 				<>
 					<MovieRow
-						title={`Your Favorite: ${favGenreName}`}
+						title={`Favorite ${favGenreName} Hits`}
 						genre={genres.find(
 							(g) =>
 								g.id ===
 								profile.favoriteGenreId,
 						)}
 						initialMovies={favGenreMoviesP1}
+						mediaType="mixed"
 					/>
 					{favGenreMoviesP2.length > 0 && (
 						<MovieRow
-							title={`More ${favGenreName}`}
+							title={`More ${favGenreName}?`}
 							genre={genres.find(
 								(g) =>
 									g.id ===
@@ -1085,6 +1137,7 @@ export default function Home() {
 							initialMovies={
 								favGenreMoviesP2
 							}
+							mediaType="mixed"
 						/>
 					)}
 				</>

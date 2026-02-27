@@ -103,10 +103,29 @@ export const MovieRow = ({
 		try {
 			let fetched: RowItem[] = [];
 			if (mediaType === "mixed") {
-				const [movieRes, tvRes] = await Promise.all([
-					APIService.getPopularMovies(page),
-					APIService.getPopularTV(page),
-				]);
+				const [movieRes, tvRes] = genre
+					? await Promise.all([
+							APIService.getMoviesByGenre(
+								genre.id,
+								page,
+							),
+							APIService.discoverTV(
+								{
+									with_genres:
+										genre.id.toString(),
+									sort_by: "popularity.desc",
+								},
+								page,
+							),
+						])
+					: await Promise.all([
+							APIService.getPopularMovies(
+								page,
+							),
+							APIService.getPopularTV(
+								page,
+							),
+						]);
 				fetched = [
 					...movieRes.map((m) => ({
 						...m,
