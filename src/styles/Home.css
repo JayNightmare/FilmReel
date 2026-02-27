@@ -82,6 +82,101 @@
     max-width: 672px;
 }
 
+.hero-carousel-controls {
+    margin-top: 28px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.hero-carousel-arrow {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    background: rgba(0, 0, 0, 0.32);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+    transition: all 0.2s ease;
+}
+
+.hero-carousel-arrow:hover {
+    border-color: rgba(127, 19, 236, 0.6);
+    background: rgba(127, 19, 236, 0.25);
+}
+
+.hero-carousel-dots {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.hero-carousel-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(255, 255, 255, 0.35);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.hero-carousel-dot.active {
+    width: 24px;
+    border-radius: 999px;
+    background: var(--accent-purple);
+}
+
+.hero-feature-form {
+    max-width: 560px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.hero-feature-textarea {
+    width: 100%;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 12px;
+    background: rgba(0, 0, 0, 0.36);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+    color: white;
+    padding: 12px 14px;
+    font-size: 0.95rem;
+    resize: vertical;
+    min-height: 96px;
+}
+
+.hero-feature-textarea::placeholder {
+    color: var(--text-secondary);
+}
+
+.hero-feature-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.hero-feature-status {
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.hero-feature-status.success {
+    color: #86efac;
+}
+
+.hero-feature-status.error {
+    color: #fca5a5;
+}
+
 .hero-badge {
     display: inline-flex;
     align-items: center;
@@ -274,6 +369,19 @@
 
     .hero-button {
         padding: 10px 16px;
+        font-size: 0.9rem;
+    }
+
+    .hero-carousel-controls {
+        margin-top: 20px;
+    }
+
+    .hero-carousel-arrow {
+        width: 34px;
+        height: 34px;
+    }
+
+    .hero-feature-textarea {
         font-size: 0.9rem;
     }
 

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { APIService } from "../services/api";
-import type { Movie, TVShow, Genre } from "../services/api";
+import type { Movie, TVShow, Genre, CastMember } from "../services/api";
 import { StorageService } from "../services/storage";
 import { useStorageSync } from "../hooks/useStorageSync";
 import { MovieRow } from "../components/MovieRow";
@@ -10,6 +10,69 @@ import "../styles/Home.css";
 
 const WATCHLIST_KEY = "filmreel_watchlist";
 const WATCHED_MOVIES_KEY = "filmreel_watched_movies";
+const ACTOR_OF_DAY_KEY = "filmreel_actor_of_day";
+const TITLE_OF_DAY_KEY = "filmreel_title_of_day";
+const HERO_SLIDE_COUNT = 4;
+const HERO_AUTO_ROTATE_MS = 8000;
+const TWELVE_HOURS_MS = 12 * 60 * 60 * 1000;
+
+interface FeaturedTitleItem {
+	id: number;
+	title: string;
+	overview: string;
+	poster_path: string | null;
+	backdrop_path: string | null;
+	mediaType: "movie" | "tv";
+}
+
+interface ActorOfDayPick {
+	id: number;
+	name: string;
+	profilePath: string | null;
+	sourceTitle: string;
+	sourceMediaType: "movie" | "tv";
+	fact: string;
+	generatedAt: number;
+}
+
+interface TitleOfDayPick {
+	id: number;
+	title: string;
+	mediaType: "movie" | "tv";
+	overview: string;
+	posterPath: string | null;
+	backdropPath: string | null;
+	fact: string;
+	generatedAt: number;
+}
+
+const isFreshPick = (timestamp: number) =>
+	Date.now() - timestamp < TWELVE_HOURS_MS;
+
+const getRandomItem = <T,>(items: T[]): T | null => {
+	if (items.length === 0) return null;
+	return items[Math.floor(Math.random() * items.length)] ?? null;
+};
+
+const shuffleItems = <T,>(items: T[]): T[] => {
+	const copy = [...items];
+	for (let i = copy.length - 1; i > 0; i -= 1) {
+		const j = Math.floor(Math.random() * (i + 1));
+		const current = copy[i];
+		copy[i] = copy[j];
+		copy[j] = current;
+	}
+	return copy;
+};
+
+const parseStoredPick = <T,>(value: string | null): T | null => {
+	if (!value) return null;
+	try {
+		return JSON.parse(value) as T;
+	} catch {
+		return null;
+	}
+};
 
 export default function Home() {
 	const [popular, setPopular] = useState<Movie[]>([]);
@@ -35,6 +98,17 @@ export default function Home() {
 
 	// Watch It Again — movies resolved from watched IDs
 	const [watchedLiveMovies, setWatchedLiveMovies] = useState<Movie[]>([]);
+	const [heroSlideIndex, setHeroSlideIndex] = useState(0);
+	const [featureRequestText, setFeatureRequestText] = useState("");
+	const [featureRequestStatus, setFeatureRequestStatus] = useState<
+		"idle" | "submitting" | "success" | "error"
+	>("idle");
+	const [actorOfDay, setActorOfDay] = useState<ActorOfDayPick | null>(
+		null,
+	);
+	const [titleOfDay, setTitleOfDay] = useState<TitleOfDayPick | null>(
+		null,
+	);
 
 	const navigate = useNavigate();
 
@@ -135,6 +209,158 @@ export default function Home() {
 		};
 	}, [profile.favoriteGenreId]);
 
+	const buildFeaturedPool = useCallback(
+		(
+			movieItems: Movie[],
+			tvItems: TVShow[],
+		): FeaturedTitleItem[] => {
+			const moviePool = movieItems
+				.slice(0, 10)
+				.map((movie) => ({
+					id: movie.id,
+					title: movie.title,
+					overview: movie.overview,
+					poster_path: movie.poster_path,
+					backdrop_path: movie.backdrop_path,
+					mediaType: "movie" as const,
+				}));
+			const tvPool = tvItems.slice(0, 10).map((show) => ({
+				id: show.id,
+				title: show.name,
+				overview: show.overview,
+				poster_path: show.poster_path,
+				backdrop_path: show.backdrop_path,
+				mediaType: "tv" as const,
+			}));
+			return [...moviePool, ...tvPool];
+		},
+		[],
+	);
+
+	const buildActorFact = (
+		actor: CastMember,
+		title: FeaturedTitleItem,
+	): string => {
+		if (actor.character?.trim()) {
+			return `${actor.name} plays ${actor.character} in ${title.title}.`;
+		}
+		return `${actor.name} appears in ${title.title}, one of today's trending picks.`;
+	};
+
+	const resolveActorOfDay = useCallback(
+		async (
+			movieItems: Movie[],
+			tvItems: TVShow[],
+		): Promise<ActorOfDayPick | null> => {
+			const stored = parseStoredPick<ActorOfDayPick>(
+				localStorage.getItem(ACTOR_OF_DAY_KEY),
+			);
+			if (stored && isFreshPick(stored.generatedAt)) {
+				return stored;
+			}
+
+			const pool = shuffleItems(
+				buildFeaturedPool(movieItems, tvItems),
+			);
+			for (const item of pool.slice(0, 8)) {
+				try {
+					const cast =
+						item.mediaType === "movie"
+							? await APIService.getMovieCredits(
+									item.id,
+								)
+							: await APIService.getTVCredits(
+									item.id,
+								);
+					const pickable = cast
+						.filter(
+							(person) =>
+								person.id > 0,
+						)
+						.slice(0, 12);
+					const actor = getRandomItem(pickable);
+					if (!actor) continue;
+
+					const selected: ActorOfDayPick = {
+						id: actor.id,
+						name: actor.name,
+						profilePath: actor.profile_path,
+						sourceTitle: item.title,
+						sourceMediaType: item.mediaType,
+						fact: buildActorFact(
+							actor,
+							item,
+						),
+						generatedAt: Date.now(),
+					};
+					localStorage.setItem(
+						ACTOR_OF_DAY_KEY,
+						JSON.stringify(selected),
+					);
+					return selected;
+				} catch {
+					continue;
+				}
+			}
+			return null;
+		},
+		[buildFeaturedPool],
+	);
+
+	const resolveTitleOfDay = useCallback(
+		(
+			movieItems: Movie[],
+			tvItems: TVShow[],
+		): TitleOfDayPick | null => {
+			const stored = parseStoredPick<TitleOfDayPick>(
+				localStorage.getItem(TITLE_OF_DAY_KEY),
+			);
+			if (stored && isFreshPick(stored.generatedAt)) {
+				return stored;
+			}
+
+			const title = getRandomItem(
+				buildFeaturedPool(movieItems, tvItems),
+			);
+			if (!title) return null;
+
+			const selected: TitleOfDayPick = {
+				id: title.id,
+				title: title.title,
+				mediaType: title.mediaType,
+				overview: title.overview,
+				posterPath: title.poster_path,
+				backdropPath: title.backdrop_path,
+				fact:
+					title.mediaType === "movie"
+						? `Today's film pick rotates every 12 hours.`
+						: `Today's TV pick rotates every 12 hours.`,
+				generatedAt: Date.now(),
+			};
+
+			localStorage.setItem(
+				TITLE_OF_DAY_KEY,
+				JSON.stringify(selected),
+			);
+			return selected;
+		},
+		[buildFeaturedPool],
+	);
+
+	const resolveDailyPicks = useCallback(
+		async (movieItems: Movie[], tvItems: TVShow[]) => {
+			const [actorPick, titlePick] = await Promise.all([
+				resolveActorOfDay(movieItems, tvItems),
+				Promise.resolve(
+					resolveTitleOfDay(movieItems, tvItems),
+				),
+			]);
+			setActorOfDay(actorPick);
+			setTitleOfDay(titlePick);
+		},
+		[resolveActorOfDay, resolveTitleOfDay],
+	);
+
 	useEffect(() => {
 		const fetchData = async () => {
 			try {
@@ -151,6 +377,7 @@ export default function Home() {
 				setHiddenGems(gems);
 				setPopularTV(tvShows);
 				GenreMap.seed(genreList);
+				await resolveDailyPicks(popMovies, tvShows);
 
 				// Fetch movies for the first 3 genres
 				const top3 = genreList.slice(0, 3);
@@ -180,6 +407,16 @@ export default function Home() {
 			}
 		};
 		fetchData();
+	}, [resolveDailyPicks]);
+
+	useEffect(() => {
+		const intervalId = window.setInterval(() => {
+			setHeroSlideIndex(
+				(prev) => (prev + 1) % HERO_SLIDE_COUNT,
+			);
+		}, HERO_AUTO_ROTATE_MS);
+
+		return () => window.clearInterval(intervalId);
 	}, []);
 
 	// Observer for detecting end of page to load more genres
@@ -280,6 +517,85 @@ export default function Home() {
 		})),
 	];
 
+	const goToPrevHeroSlide = () =>
+		setHeroSlideIndex(
+			(prev) =>
+				(prev - 1 + HERO_SLIDE_COUNT) %
+				HERO_SLIDE_COUNT,
+		);
+
+	const goToNextHeroSlide = () =>
+		setHeroSlideIndex((prev) => (prev + 1) % HERO_SLIDE_COUNT);
+
+	const heroBackground = (() => {
+		if (heroSlideIndex === 3 && titleOfDay) {
+			return titleOfDay.backdropPath || titleOfDay.posterPath;
+		}
+		if (heroSlideIndex === 2 && actorOfDay?.profilePath) {
+			return actorOfDay.profilePath;
+		}
+		return featured?.backdrop_path || featured?.poster_path || null;
+	})();
+
+	const submitFeatureRequest = async (
+		e: React.FormEvent<HTMLFormElement>,
+	) => {
+		e.preventDefault();
+		if (!featureRequestText.trim()) return;
+
+		setFeatureRequestStatus("submitting");
+		try {
+			const webhookUrl = import.meta.env.VITE_WEBHOOK_PB;
+			if (!webhookUrl) {
+				setFeatureRequestStatus("error");
+				return;
+			}
+
+			const payload = {
+				username: "FilmReel Feedback Bot",
+				embeds: [
+					{
+						title: "New Feature Request",
+						color: 3447003,
+						fields: [
+							{
+								name: "Type",
+								value: "Feature Request",
+								inline: true,
+							},
+							{
+								name: "Description",
+								value: featureRequestText.trim(),
+							},
+						],
+						timestamp: new Date().toISOString(),
+					},
+				],
+			};
+
+			const response = await fetch(webhookUrl, {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify(payload),
+			});
+
+			if (!response.ok) {
+				setFeatureRequestStatus("error");
+				return;
+			}
+
+			setFeatureRequestStatus("success");
+			setFeatureRequestText("");
+			window.setTimeout(() => {
+				setFeatureRequestStatus("idle");
+			}, 2000);
+		} catch {
+			setFeatureRequestStatus("error");
+		}
+	};
+
 	return (
 		<div className="home-container">
 			{/* Hero Section */}
@@ -288,8 +604,8 @@ export default function Home() {
 					<div className="hero-bg-container">
 						<img
 							src={
-								featured.backdrop_path
-									? `https://image.tmdb.org/t/p/original${featured.backdrop_path}`
+								heroBackground
+									? `https://image.tmdb.org/t/p/original${heroBackground}`
 									: `https://image.tmdb.org/t/p/original${featured.poster_path || ""}`
 							}
 							onError={(e) => {
@@ -306,52 +622,288 @@ export default function Home() {
 					</div>
 
 					<div className="hero-content animate-fade-in-up">
-						<div className="hero-badge">
-							<span className="hero-badge-dot animate-pulse"></span>
-							<span className="hero-badge-text">
-								AI Powered
-							</span>
-						</div>
+						{heroSlideIndex === 0 && (
+							<>
+								<div className="hero-badge">
+									<span className="hero-badge-dot animate-pulse"></span>
+									<span className="hero-badge-text">
+										Featured
+										Pick
+									</span>
+								</div>
+								<h2 className="hero-title">
+									What's
+									the{" "}
+									<span className="text-gradient">
+										vibe
+									</span>{" "}
+									tonight?
+								</h2>
+								<p className="hero-description line-clamp-2">
+									{featured.overview ||
+										"Stop scrolling, start watching. Let our AI curate a personalized playlist based on exactly how you're feeling right now."}
+								</p>
+								<div className="hero-buttons">
+									<button
+										onClick={() =>
+											navigate(
+												"/mood",
+											)
+										}
+										className="btn-primary hero-button hero-button-primary"
+									>
+										<span className="material-symbols-outlined">
+											auto_awesome
+										</span>
+										Take
+										Mood
+										Survey
+									</button>
+									<button
+										onClick={() =>
+											navigate(
+												`/movie/${featured.id}`,
+											)
+										}
+										className="btn-glass hero-button"
+									>
+										<span className="material-symbols-outlined">
+											play_arrow
+										</span>
+										Watch
+										Now
+									</button>
+								</div>
+							</>
+						)}
 
-						<h2 className="hero-title">
-							What's the{" "}
-							<span className="text-gradient">
-								vibe
-							</span>{" "}
-							tonight?
-						</h2>
+						{heroSlideIndex === 1 && (
+							<>
+								<div className="hero-badge">
+									<span className="hero-badge-dot animate-pulse"></span>
+									<span className="hero-badge-text">
+										Feature
+										Request
+									</span>
+								</div>
+								<h2 className="hero-title">
+									Help
+									shape
+									FilmReel
+								</h2>
+								<p className="hero-description">
+									Have an
+									idea for
+									a new
+									feature?
+									Submit
+									it here
+									and
+									we'll
+									review
+									it for
+									upcoming
+									releases.
+								</p>
+								<form
+									className="hero-feature-form"
+									onSubmit={
+										submitFeatureRequest
+									}
+								>
+									<textarea
+										className="hero-feature-textarea"
+										value={
+											featureRequestText
+										}
+										onChange={(
+											e,
+										) =>
+											setFeatureRequestText(
+												e
+													.target
+													.value,
+											)
+										}
+										placeholder="Describe the feature you'd like to see..."
+										rows={
+											3
+										}
+										required
+									/>
+									<div className="hero-feature-actions">
+										<button
+											type="submit"
+											className="btn-primary hero-button"
+											disabled={
+												featureRequestStatus ===
+													"submitting" ||
+												!featureRequestText.trim()
+											}
+										>
+											{featureRequestStatus ===
+											"submitting"
+												? "Sending..."
+												: "Submit Request"}
+										</button>
+										{featureRequestStatus ===
+											"success" && (
+											<span className="hero-feature-status success">
+												Sent!
+												Thanks
+												for
+												the
+												idea.
+											</span>
+										)}
+										{featureRequestStatus ===
+											"error" && (
+											<span className="hero-feature-status error">
+												Couldn't
+												send
+												right
+												now.
+												Try
+												again.
+											</span>
+										)}
+									</div>
+								</form>
+							</>
+						)}
 
-						<p className="hero-description line-clamp-2">
-							{featured.overview ||
-								"Stop scrolling, start watching. Let our AI curate a personalized playlist based on exactly how you're feeling right now."}
-						</p>
+						{heroSlideIndex === 2 &&
+							actorOfDay && (
+								<>
+									<div className="hero-badge">
+										<span className="hero-badge-dot animate-pulse"></span>
+										<span className="hero-badge-text">
+											Actor
+											of
+											the
+											Day
+										</span>
+									</div>
+									<h2 className="hero-title">
+										{
+											actorOfDay.name
+										}
+									</h2>
+									<p className="hero-description">
+										{
+											actorOfDay.fact
+										}
+									</p>
+									<div className="hero-buttons">
+										<button
+											onClick={() =>
+												navigate(
+													`/search?searchCategory=actor&q=${encodeURIComponent(actorOfDay.name)}&with_people=${actorOfDay.id}&actor_name=${encodeURIComponent(actorOfDay.name)}`,
+												)
+											}
+											className="btn-primary hero-button"
+										>
+											<span className="material-symbols-outlined">
+												theater_comedy
+											</span>
+											View
+											Movies
+										</button>
+									</div>
+								</>
+							)}
 
-						<div className="hero-buttons">
+						{heroSlideIndex === 3 &&
+							titleOfDay && (
+								<>
+									<div className="hero-badge">
+										<span className="hero-badge-dot animate-pulse"></span>
+										<span className="hero-badge-text">
+											{titleOfDay.mediaType ===
+											"movie"
+												? "Movie of the Day"
+												: "TV Show of the Day"}
+										</span>
+									</div>
+									<h2 className="hero-title">
+										{
+											titleOfDay.title
+										}
+									</h2>
+									<p className="hero-description line-clamp-2">
+										{titleOfDay.overview ||
+											titleOfDay.fact}
+									</p>
+									<div className="hero-buttons">
+										<button
+											onClick={() =>
+												navigate(
+													titleOfDay.mediaType ===
+														"movie"
+														? `/movie/${titleOfDay.id}`
+														: `/tv/${titleOfDay.id}`,
+												)
+											}
+											className="btn-primary hero-button"
+										>
+											<span className="material-symbols-outlined">
+												play_circle
+											</span>
+											Open
+											Viewer
+										</button>
+									</div>
+								</>
+							)}
+
+						<div className="hero-carousel-controls">
 							<button
-								onClick={() =>
-									navigate(
-										"/mood",
-									)
+								type="button"
+								className="hero-carousel-arrow"
+								onClick={
+									goToPrevHeroSlide
 								}
-								className="btn-primary hero-button hero-button-primary"
+								title="Previous"
 							>
 								<span className="material-symbols-outlined">
-									auto_awesome
+									chevron_left
 								</span>
-								Take Mood Survey
 							</button>
+							<div className="hero-carousel-dots">
+								{Array.from({
+									length: HERO_SLIDE_COUNT,
+								}).map(
+									(
+										_,
+										index,
+									) => (
+										<button
+											key={
+												index
+											}
+											type="button"
+											className={`hero-carousel-dot ${heroSlideIndex === index ? "active" : ""}`}
+											onClick={() =>
+												setHeroSlideIndex(
+													index,
+												)
+											}
+											title={`Go to slide ${index + 1}`}
+										/>
+									),
+								)}
+							</div>
 							<button
-								onClick={() =>
-									navigate(
-										`/movie/${featured.id}`,
-									)
+								type="button"
+								className="hero-carousel-arrow"
+								onClick={
+									goToNextHeroSlide
 								}
-								className="btn-glass hero-button"
+								title="Next"
 							>
 								<span className="material-symbols-outlined">
-									play_arrow
+									chevron_right
 								</span>
-								Watch Now
 							</button>
 						</div>
 					</div>
