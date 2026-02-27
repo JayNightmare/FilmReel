@@ -41,13 +41,18 @@ export const MovieRow = ({
 	// Track IDs already shown in THIS row to prevent duplicates within a single carousel
 	const rowSeenIds = useRef<Set<string>>(new Set());
 
-	const getItemMediaType = (item: RowItem): "movie" | "tv" => {
-		if (item._mediaType) return item._mediaType;
-		return mediaType === "tv" ? "tv" : "movie";
-	};
+	const getItemMediaType = useCallback(
+		(item: RowItem): "movie" | "tv" => {
+			if (item._mediaType) return item._mediaType;
+			return mediaType === "tv" ? "tv" : "movie";
+		},
+		[mediaType],
+	);
 
-	const getRowKey = (item: RowItem) =>
-		`${getItemMediaType(item)}-${item.id}`;
+	const getRowKey = useCallback(
+		(item: RowItem) => `${getItemMediaType(item)}-${item.id}`,
+		[getItemMediaType],
+	);
 
 	// Sync initial movies from props & register within the row-level dedup set.
 	useEffect(() => {
@@ -65,7 +70,7 @@ export const MovieRow = ({
 
 		setMovies(unique);
 		setPage(2);
-	}, [initialMovies]);
+	}, [initialMovies, getRowKey]);
 
 	// Attach the IntersectionObserver to the sentinel
 	const attachObserver = useCallback(() => {
