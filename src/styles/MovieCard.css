@@ -133,3 +133,8 @@
     text-transform: uppercase;
     pointer-events: none;
 }
+
+.movie-card-controls {
+    display: flex;
+    flex-direction: row;
+}

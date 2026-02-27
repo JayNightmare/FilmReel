@@ -54,6 +54,12 @@ export const MovieCard = ({ movie, mediaType = "movie" }: MovieCardProps) => {
 		}
 	};
 
+	const removeWatchedMovie = (e: React.MouseEvent) => {
+		e.preventDefault();
+		e.stopPropagation();
+		StorageService.removeWatchedMovie(movie.id);
+	};
+
 	return (
 		<Link to={linkPath} className="movie-card group">
 			<div className="movie-card-inner">
@@ -73,21 +79,32 @@ export const MovieCard = ({ movie, mediaType = "movie" }: MovieCardProps) => {
 					{mediaType === "tv" ? "TV" : "Film"}
 				</div>
 
-				<button
-					className={`movie-bookmark ${saved ? "active" : ""}`}
-					onClick={toggleWatchlist}
-					title={
-						saved
-							? "Remove from Watchlist"
-							: "Add to Watchlist"
-					}
-				>
-					<span className="material-symbols-outlined">
-						{saved
-							? "bookmark_added"
-							: "bookmark_add"}
-					</span>
-				</button>
+				<div className="movie-card-controls">
+					<button
+						className={`movie-bookmark ${saved ? "active" : ""}`}
+						onClick={toggleWatchlist}
+						title={
+							saved
+								? "Remove from Watchlist"
+								: "Add to Watchlist"
+						}
+					>
+						<span className="material-symbols-outlined">
+							{saved
+								? "bookmark_added"
+								: "bookmark_add"}
+						</span>
+					</button>
+					<button
+						className="movie-remove"
+						onClick={removeWatchedMovie}
+						title="Remove from History"
+					>
+						<span className="material-symbols-outlined">
+							delete
+						</span>
+					</button>
+				</div>
 
 				<div className="movie-info">
 					<h4 className="movie-title truncate">

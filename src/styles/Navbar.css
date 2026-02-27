@@ -47,36 +47,6 @@
     width: 100%;
 }
 
-.nav-search-categories {
-    margin-top: 10px;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-}
-
-.nav-search-category-chip {
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    color: var(--text-secondary);
-    padding: 6px 12px;
-    border-radius: 999px;
-    font-size: 0.78rem;
-    line-height: 1;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.nav-search-category-chip:hover {
-    color: white;
-    background: rgba(255, 255, 255, 0.1);
-}
-
-.nav-search-category-chip.active {
-    color: white;
-    border-color: var(--accent-purple);
-    background: rgba(127, 19, 236, 0.2);
-}
-
 .nav-search-icon {
     position: absolute;
     left: 12px;
@@ -585,15 +555,6 @@
         width: 100%;
         max-width: 100%;
         margin: 0;
-    }
-
-    .nav-search-categories {
-        gap: 6px;
-    }
-
-    .nav-search-category-chip {
-        font-size: 0.72rem;
-        padding: 6px 10px;
     }
 
     .notif-dropdown {

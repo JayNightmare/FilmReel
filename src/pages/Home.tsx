@@ -184,35 +184,8 @@ export default function Home() {
 
 	// Observer for detecting end of page to load more genres
 	const observer = useRef<IntersectionObserver | null>(null);
-	const lastGenreElementRef = useCallback(
-		(node: HTMLElement | null) => {
-			if (loading || loadingMoreGenres) return;
-			if (observer.current) observer.current.disconnect();
 
-			observer.current = new IntersectionObserver(
-				(entries) => {
-					if (
-						entries[0].isIntersecting &&
-						displayedGenreCount <
-							genres.length
-					) {
-						loadMoreGenres();
-					}
-				},
-				{ rootMargin: "0px 0px 400px 0px" },
-			);
-
-			if (node) observer.current.observe(node);
-		},
-		[
-			loading,
-			loadingMoreGenres,
-			displayedGenreCount,
-			genres.length,
-		],
-	);
-
-	const loadMoreGenres = async () => {
+	const loadMoreGenres = useCallback(async () => {
 		if (loadingMoreGenres || displayedGenreCount >= genres.length)
 			return;
 		setLoadingMoreGenres(true);
@@ -245,7 +218,36 @@ export default function Home() {
 		} finally {
 			setLoadingMoreGenres(false);
 		}
-	};
+	}, [loadingMoreGenres, displayedGenreCount, genres, genreMovies]);
+
+	const lastGenreElementRef = useCallback(
+		(node: HTMLElement | null) => {
+			if (loading || loadingMoreGenres) return;
+			if (observer.current) observer.current.disconnect();
+
+			observer.current = new IntersectionObserver(
+				(entries) => {
+					if (
+						entries[0].isIntersecting &&
+						displayedGenreCount <
+							genres.length
+					) {
+						loadMoreGenres();
+					}
+				},
+				{ rootMargin: "0px 0px 400px 0px" },
+			);
+
+			if (node) observer.current.observe(node);
+		},
+		[
+			loading,
+			loadingMoreGenres,
+			displayedGenreCount,
+			genres.length,
+			loadMoreGenres,
+		],
+	);
 
 	// Resolve the favorite genre name
 	const favGenreName =
