@@ -224,6 +224,13 @@
     word-wrap: break-word;
 }
 
+.hero-refresh-timer {
+    margin: -20px 0 24px 0;
+    color: var(--accent-purple-light);
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
 .hero-buttons {
     display: flex;
     flex-wrap: wrap;
@@ -361,6 +368,10 @@
     .hero-description {
         font-size: 0.95rem;
         margin-bottom: 20px;
+    }
+
+    .hero-refresh-timer {
+        margin-top: -8px;
     }
 
     .hero-buttons {

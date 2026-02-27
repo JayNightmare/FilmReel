@@ -74,6 +74,15 @@ const parseStoredPick = <T,>(value: string | null): T | null => {
 	}
 };
 
+const formatRefreshRemaining = (generatedAt: number, now: number): string => {
+	const remaining = Math.max(0, TWELVE_HOURS_MS - (now - generatedAt));
+	const hours = Math.floor(remaining / (60 * 60 * 1000));
+	const minutes = Math.floor(
+		(remaining % (60 * 60 * 1000)) / (60 * 1000),
+	);
+	return `${hours}h ${minutes}m`;
+};
+
 export default function Home() {
 	const [popular, setPopular] = useState<Movie[]>([]);
 	const [genres, setGenres] = useState<Genre[]>([]);
@@ -103,6 +112,10 @@ export default function Home() {
 	const [featureRequestStatus, setFeatureRequestStatus] = useState<
 		"idle" | "submitting" | "success" | "error"
 	>("idle");
+	const [isFeatureRequestFocused, setIsFeatureRequestFocused] =
+		useState(false);
+	const [isHeroHovered, setIsHeroHovered] = useState(false);
+	const [refreshNow, setRefreshNow] = useState(() => Date.now());
 	const [actorOfDay, setActorOfDay] = useState<ActorOfDayPick | null>(
 		null,
 	);
@@ -411,12 +424,21 @@ export default function Home() {
 
 	useEffect(() => {
 		const intervalId = window.setInterval(() => {
+			if (isFeatureRequestFocused || isHeroHovered) return;
 			setHeroSlideIndex(
 				(prev) => (prev + 1) % HERO_SLIDE_COUNT,
 			);
 		}, HERO_AUTO_ROTATE_MS);
 
 		return () => window.clearInterval(intervalId);
+	}, [isFeatureRequestFocused, isHeroHovered]);
+
+	useEffect(() => {
+		const refreshTimerId = window.setInterval(() => {
+			setRefreshNow(Date.now());
+		}, 60000);
+
+		return () => window.clearInterval(refreshTimerId);
 	}, []);
 
 	// Observer for detecting end of page to load more genres
@@ -537,6 +559,13 @@ export default function Home() {
 		return featured?.backdrop_path || featured?.poster_path || null;
 	})();
 
+	const actorRefreshText = actorOfDay
+		? formatRefreshRemaining(actorOfDay.generatedAt, refreshNow)
+		: null;
+	const titleRefreshText = titleOfDay
+		? formatRefreshRemaining(titleOfDay.generatedAt, refreshNow)
+		: null;
+
 	const submitFeatureRequest = async (
 		e: React.FormEvent<HTMLFormElement>,
 	) => {
@@ -600,7 +629,15 @@ export default function Home() {
 		<div className="home-container">
 			{/* Hero Section */}
 			{featured && (
-				<section className="hero-section group">
+				<section
+					className="hero-section group"
+					onMouseEnter={() =>
+						setIsHeroHovered(true)
+					}
+					onMouseLeave={() =>
+						setIsHeroHovered(false)
+					}
+				>
 					<div className="hero-bg-container">
 						<img
 							src={
@@ -716,6 +753,16 @@ export default function Home() {
 										value={
 											featureRequestText
 										}
+										onFocus={() =>
+											setIsFeatureRequestFocused(
+												true,
+											)
+										}
+										onBlur={() =>
+											setIsFeatureRequestFocused(
+												false,
+											)
+										}
 										onChange={(
 											e,
 										) =>
@@ -794,6 +841,15 @@ export default function Home() {
 											actorOfDay.fact
 										}
 									</p>
+									{actorRefreshText && (
+										<p className="hero-refresh-timer">
+											Refreshes
+											in{" "}
+											{
+												actorRefreshText
+											}
+										</p>
+									)}
 									<div className="hero-buttons">
 										<button
 											onClick={() =>
@@ -834,6 +890,15 @@ export default function Home() {
 										{titleOfDay.overview ||
 											titleOfDay.fact}
 									</p>
+									{titleRefreshText && (
+										<p className="hero-refresh-timer">
+											Refreshes
+											in{" "}
+											{
+												titleRefreshText
+											}
+										</p>
+									)}
 									<div className="hero-buttons">
 										<button
 											onClick={() =>
