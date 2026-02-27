@@ -12,6 +12,7 @@ const WATCHLIST_KEY = "filmreel_watchlist";
 const WATCHED_MOVIES_KEY = "filmreel_watched_movies";
 const ACTOR_OF_DAY_KEY = "filmreel_actor_of_day";
 const TITLE_OF_DAY_KEY = "filmreel_title_of_day";
+const ABOUT_SHORTCUT_DISMISSED_KEY = "filmreel_about_shortcut_dismissed";
 const HERO_SLIDE_COUNT = 4;
 const HERO_AUTO_ROTATE_MS = 8000;
 const TWELVE_HOURS_MS = 12 * 60 * 60 * 1000;
@@ -122,6 +123,18 @@ export default function Home() {
 	const [titleOfDay, setTitleOfDay] = useState<TitleOfDayPick | null>(
 		null,
 	);
+	const [isAboutShortcutDismissed, setIsAboutShortcutDismissed] =
+		useState(() => {
+			try {
+				return (
+					localStorage.getItem(
+						ABOUT_SHORTCUT_DISMISSED_KEY,
+					) === "1"
+				);
+			} catch {
+				return false;
+			}
+		});
 
 	const navigate = useNavigate();
 
@@ -625,6 +638,15 @@ export default function Home() {
 		}
 	};
 
+	const dismissAboutShortcut = () => {
+		setIsAboutShortcutDismissed(true);
+		try {
+			localStorage.setItem(ABOUT_SHORTCUT_DISMISSED_KEY, "1");
+		} catch {
+			// no-op if storage is unavailable
+		}
+	};
+
 	return (
 		<div className="home-container">
 			{/* Hero Section */}
@@ -971,6 +993,51 @@ export default function Home() {
 								</span>
 							</button>
 						</div>
+					</div>
+				</section>
+			)}
+
+			{!isAboutShortcutDismissed && (
+				<section className="home-about-shortcut glass-panel">
+					<div>
+						<p className="home-about-shortcut-eyebrow">
+							New here?
+						</p>
+						<h3 className="home-about-shortcut-title">
+							Learn what FilmReel is
+							and who built it.
+						</h3>
+						<p className="home-about-shortcut-text">
+							Read the privacy-first
+							breakdown, project
+							goals, and developer
+							background.
+						</p>
+					</div>
+					<div className="home-about-shortcut-actions">
+						<button
+							onClick={() =>
+								navigate(
+									"/about",
+								)
+							}
+							className="btn btn-glass home-about-shortcut-button"
+						>
+							About FilmReel
+						</button>
+						<button
+							type="button"
+							title="Dismiss"
+							aria-label="Dismiss about shortcut"
+							onClick={
+								dismissAboutShortcut
+							}
+							className="home-about-shortcut-dismiss"
+						>
+							<span className="material-symbols-outlined">
+								close
+							</span>
+						</button>
 					</div>
 				</section>
 			)}

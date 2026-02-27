@@ -10,6 +10,18 @@ All notable changes to this project will be documented in this file.
 - Feature: Added Film/TV badge to `MovieCard` components.
 - Feature: Episode-level watched tracking for TV series.
 
+## [0.0.11] - 2026-02-27
+
+### Added
+
+- Feature: New About page (`/about`) covering mission, privacy-first behavior, developer profile, tech stack, contribution links, and contact context.
+- Feature: About page shortcut surfaced on both Navbar and Footer navigation.
+- Feature: About page now includes an inline `Send Feedback` action that opens the existing feedback modal workflow.
+
+### Changed
+
+- UX: Home page About shortcut is now dismissible and persisted via localStorage so users can hide it after first use.
+
 ## [0.0.9] - 2026-02-23
 
 ### Added

@@ -67,6 +67,21 @@
     gap: 16px;
 }
 
+.nav-about-link {
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-size: 0.95rem;
+    font-weight: 600;
+    padding: 8px 10px;
+    border-radius: 999px;
+    transition: color 0.2s, background 0.2s;
+}
+
+.nav-about-link:hover {
+    color: white;
+    background: rgba(255, 255, 255, 0.05);
+}
+
 .nav-mood-button {
     margin-right: 8px;
     display: flex;
@@ -539,6 +554,11 @@
     .nav-actions {
         order: 2;
         gap: 8px;
+    }
+
+    .nav-about-link {
+        font-size: 0.85rem;
+        padding: 6px 8px;
     }
 
     .nav-profile-name {

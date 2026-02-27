@@ -9,6 +9,7 @@ import MoodSurvey from "./pages/MoodSurvey";
 import Account from "./pages/Account";
 import MovieViewer from "./pages/MovieViewer";
 import TVViewer from "./pages/TVViewer";
+import About from "./pages/About";
 import NotFound from "./pages/NotFound";
 import { Navbar } from "./components/Navbar";
 import { Footer } from "./components/Footer";
@@ -65,6 +66,10 @@ function App() {
 					<Route
 						path="/account"
 						element={<Account />}
+					/>
+					<Route
+						path="/about"
+						element={<About />}
 					/>
 					<Route
 						path="/movie/:id"

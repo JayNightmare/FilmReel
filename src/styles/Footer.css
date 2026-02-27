@@ -81,6 +81,16 @@
     color: var(--accent-purple-light);
 }
 
+.footer-button {
+    background-color: transparent;
+    padding: 0;
+    margin: 0;
+    border: none;
+    font-size: 0.95rem;
+    color: var(--text-secondary);
+    cursor: pointer;
+}
+
 .footer-bottom {
     display: flex;
     flex-direction: column;

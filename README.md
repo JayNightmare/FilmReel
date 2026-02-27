@@ -6,15 +6,18 @@ FilmReel is a modern, responsive web application that lets you browse, discover,
 
 - **Home Dashboard:** A Netflix-style browser where movies are categorized by genre in horizontally scrolling rows. Features a dynamic hero spotlight for trending releases.
 - **Movie Viewer:** Dive into a movie's details (rating, release date, overview), browse dynamic Top Cast carousels, and watch securely via the integrated embedded players.
+- **About & Transparency Page:** A first-person About page covering FilmReel's mission, privacy-first model, developer background, tech stack, and contribution links.
 - **Multi-Provider Streaming:** Seamlessly switch between streaming sources (VidKing, VidSrc, SuperEmbed) via a sleek Glassmorphic dropdown to ensure uninterrupted playback.
 - **Advanced Discovery & Search:** Instantly find content using the live debounced Navbar search autocomplete, or drill down using the Advanced Filter Panel (genre, actor, year, score).
 - **Mood Discovery Survey:** Can't decide what to watch? Take a quick, interactive one-word survey. Your answers determine your current mood, and the app's weighted algorithm suggests movies tailored to how you're feeling.
 - **Account Settings & Watchlist:** Customize your profile locally, save your favorite genres, and manage your curated Watchlist completely offline.
+- **Integrated Feedback Flow:** Users can submit playback issues, general feedback, or feature requests from the Navbar and About page via a built-in modal.
+- **Privacy-First Storage:** User profile, watchlist, mood history, and viewing progress are stored locally in the browser (no dedicated backend user database).
 - **Mobile First:** A meticulously crafted Apple iOS 26 / Google Stitch UI design system ensures flawless, visually stunning responsiveness across all screen sizes.
 
-## Coming Soon
+## Roadmap
 
-- **TV Shows Integration:** Comprehensive browsing, viewing, and episode tracking capabilities for TV series.
+- **Episode-Level Tracking:** Continue expanding TV progress persistence with richer season/episode completion controls.
 
 ## Tech Stack
 
@@ -36,29 +39,29 @@ Ensure you have Node.js and npm installed on your machine.
 
 1. Clone the repository:
 
-    ```bash
-    git clone <your-repo-url>
-    cd FilmReel
-    ```
+      ```bash
+      git clone <your-repo-url>
+      cd FilmReel
+      ```
 
 2. Install dependencies:
 
-    ```bash
-    npm install
-    ```
+      ```bash
+      npm install
+      ```
 
 3. Setup environment variables:
    By default, the app uses mock data. To use live TMDB data, provide an API key. Create a `.env` file in the root directory:
 
-    ```env
-    TMDB_API_KEY=your_tmdb_api_key_here
-    ```
+      ```env
+      TMDB_API_KEY=your_tmdb_api_key_here
+      ```
 
 4. Run the development server:
 
-    ```bash
-    npm run dev
-    ```
+      ```bash
+      npm run dev
+      ```
 
 5. Open your browser and navigate to the provided local URL (typically `http://localhost:5173`).
 

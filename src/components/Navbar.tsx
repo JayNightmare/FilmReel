@@ -688,6 +688,13 @@ export const Navbar = () => {
 
 				{/* Right Actions */}
 				<div className="nav-actions">
+					<Link
+						to="/about"
+						className="nav-about-link"
+						title="About FilmReel"
+					>
+						About
+					</Link>
 					<div>
 						<button
 							className="nav-icon-button"

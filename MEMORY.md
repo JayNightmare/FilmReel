@@ -2,7 +2,7 @@
 
 ## Current Project State
 
-- All core UI components and pages (Browser, Survey, Viewer, Account) have been implemented.
+- All core UI components and pages (Browser, Survey, Viewer, Account, About) have been implemented.
 - The project is fully styled with the Google Stitch UI Glassmorphism aesthetic.
 - Deployment scripts and custom domain CNAME have been added for `film.nexusgit.info`.
 - Infinite scrolling (vertical + horizontal) on Home page using IntersectionObserver.
@@ -19,6 +19,9 @@
 - Stitch UI immersive player overlay: glassmorphism control bar, title pill, center play, Mood Mode, cinematic backdrop.
 - [Movie](file:///v:/Documents/Personal%20Projects/FilmReel/src/services/api.ts#5-16) interface includes optional `runtime` field.
 - PostMessage player sync: live progress/time from VidKing `PLAYER_EVENT`, auto-hide controls on idle, resume-from-saved-progress via `StorageService`.
+- About page is live with first-person project/developer narrative, privacy-first details, and public GitHub/repository references.
+- Home now includes an About shortcut card that can be dismissed and persisted in localStorage.
+- Feedback modal can now be launched directly from the About page in addition to Navbar entry points.
 
 ## Active Tasks
 
@@ -36,6 +39,7 @@
 - **SEO & Social**: Improved website metadata (`index.html`) with Open Graph tags, Twitter Cards, a detailed description, and a custom SVG favicon (`film-reel.svg`).
 
 - **Version 0.0.10**: Updated Search page to simultaneously query and interleave Movies and TV Shows, complete with Film/TV badge indicators on MovieCards.
+- **Version 0.0.11**: Added About page and navigation access points, made Home About shortcut dismissible with persistence, and added About-page feedback modal trigger.
 - **Version 0.0.9**: TV Shows integration, plus a static release notes notification system (`releaseNotes.ts` config → Navbar diff against localStorage).
 - **Version 0.0.8**: Restructured MovieViewer details to YouTube-style layout; fixed autocomplete dropdown clipping issue caused by navbar CSS constraints.
 - **Version 0.0.7**: Comprehensive mobile layout audit and overhaul ensuring robust cross-device support; globally constrained horizontal overflow.

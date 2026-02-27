@@ -5,6 +5,69 @@
     gap: 48px;
 }
 
+.home-about-shortcut {
+    border-radius: 16px;
+    padding: 22px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.home-about-shortcut-eyebrow {
+    color: var(--accent-purple-light);
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+}
+
+.home-about-shortcut-title {
+    font-size: 1.2rem;
+    font-weight: 700;
+    margin-bottom: 6px;
+}
+
+.home-about-shortcut-text {
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+    line-height: 1.6;
+}
+
+.home-about-shortcut-button {
+    flex-shrink: 0;
+}
+
+.home-about-shortcut-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.home-about-shortcut-dismiss {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.home-about-shortcut-dismiss:hover {
+    color: white;
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.home-about-shortcut-dismiss .material-symbols-outlined {
+    font-size: 20px;
+}
+
 /* Loading states */
 .home-loading {
     display: flex;
@@ -36,6 +99,25 @@
 .home-loading-more-icon {
     font-size: 32px;
     color: var(--accent-purple);
+}
+
+@media (max-width: 768px) {
+    .home-about-shortcut {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .home-about-shortcut-button {
+        width: 100%;
+    }
+
+    .home-about-shortcut-actions {
+        width: 100%;
+    }
+
+    .home-about-shortcut-dismiss {
+        flex-shrink: 0;
+    }
 }
 
 /* Hero Section */
