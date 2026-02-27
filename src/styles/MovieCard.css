@@ -74,9 +74,7 @@
 }
 
 .movie-bookmark {
-    position: absolute;
-    top: 8px;
-    right: 8px;
+    position: relative;
     z-index: 15;
     background: rgba(0, 0, 0, 0.6);
     -webkit-backdrop-filter: blur(8px);
@@ -117,6 +115,39 @@
     color: var(--accent-purple-light);
 }
 
+.movie-remove {
+    position: relative;
+    z-index: 15;
+    background: rgba(0, 0, 0, 0.6);
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+    border: none;
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    opacity: 0;
+    transform: scale(0.8);
+    transition: all 0.25s ease;
+}
+
+.movie-remove .material-symbols-outlined {
+    font-size: 20px;
+    color: white;
+}
+
+.movie-card:hover .movie-remove {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.movie-remove:hover {
+    background: rgba(220, 38, 38, 0.7);
+}
+
 .media-type-badge {
     position: absolute;
     top: 8px;
@@ -135,6 +166,11 @@
 }
 
 .movie-card-controls {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    z-index: 15;
     display: flex;
-    flex-direction: row;
+    flex-direction: column;
+    gap: 8px;
 }

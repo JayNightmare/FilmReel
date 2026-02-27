@@ -36,6 +36,7 @@ export const MovieCard = ({ movie, mediaType = "movie" }: MovieCardProps) => {
 	const genreName = movie.genre_ids?.[0]
 		? GenreMap.getName(movie.genre_ids[0])
 		: "Film";
+	const isWatched = StorageService.hasWatched(movie.id);
 
 	const toggleWatchlist = (e: React.MouseEvent) => {
 		e.preventDefault();
@@ -80,6 +81,19 @@ export const MovieCard = ({ movie, mediaType = "movie" }: MovieCardProps) => {
 				</div>
 
 				<div className="movie-card-controls">
+					{isWatched && (
+						<button
+							className="movie-remove"
+							onClick={
+								removeWatchedMovie
+							}
+							title="Remove from History"
+						>
+							<span className="material-symbols-outlined">
+								delete
+							</span>
+						</button>
+					)}
 					<button
 						className={`movie-bookmark ${saved ? "active" : ""}`}
 						onClick={toggleWatchlist}
@@ -93,15 +107,6 @@ export const MovieCard = ({ movie, mediaType = "movie" }: MovieCardProps) => {
 							{saved
 								? "bookmark_added"
 								: "bookmark_add"}
-						</span>
-					</button>
-					<button
-						className="movie-remove"
-						onClick={removeWatchedMovie}
-						title="Remove from History"
-					>
-						<span className="material-symbols-outlined">
-							delete
 						</span>
 					</button>
 				</div>
