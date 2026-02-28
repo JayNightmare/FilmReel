@@ -146,6 +146,12 @@ export default function MovieViewer() {
 	const releaseYear = movie.release_date
 		? new Date(movie.release_date).getFullYear()
 		: "";
+	const genreIds = [
+		...(movie.genre_ids ?? []),
+		...((movie.genres ?? []).map((genre) => genre.id) ?? []),
+	];
+	const isAnime =
+		genreIds.includes(16) && movie.original_language === "ja";
 
 	const toggleWatchlist = () => {
 		if (inWatchlist) {
@@ -167,11 +173,29 @@ export default function MovieViewer() {
 				color: "7f13ec",
 				autoPlay: "true",
 			});
+			if (isAnime) {
+				params.set("lang", "en");
+				params.set("audio", "dub");
+			}
 			return `https://vidking.net/embed/movie/${id}?${params.toString()}`;
 		} else if (provider === "vidsrc") {
-			return `https://vidsrc.me/embed/movie?tmdb=${id}`;
+			const params = new URLSearchParams({
+				tmdb: id || "",
+			});
+			if (isAnime) {
+				params.set("ds_lang", "en");
+			}
+			return `https://vidsrc.me/embed/movie?${params.toString()}`;
 		} else if (provider === "superembed") {
-			return `https://multiembed.mov/directstream.php?video_id=${id}&tmdb=1`;
+			const params = new URLSearchParams({
+				video_id: id || "",
+				tmdb: "1",
+			});
+			if (isAnime) {
+				params.set("lang", "en");
+				params.set("audio", "dub");
+			}
+			return `https://multiembed.mov/directstream.php?${params.toString()}`;
 		}
 		return "about:blank";
 	};

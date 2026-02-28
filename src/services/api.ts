@@ -11,6 +11,8 @@ export interface Movie {
 	vote_average: number;
 	release_date: string;
 	genre_ids: number[];
+	genres?: Genre[];
+	original_language?: string;
 	runtime?: number;
 }
 
@@ -52,6 +54,8 @@ export interface TVShow {
 	vote_average: number;
 	first_air_date: string;
 	genre_ids: number[];
+	genres?: Genre[];
+	original_language?: string;
 	number_of_seasons?: number;
 	number_of_episodes?: number;
 	seasons?: Season[];
