@@ -13,6 +13,12 @@ export interface ReleaseNote {
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
 	{
+		id: "0.1.1",
+		title: "Anime Upgrade",
+		message: "Anime now has a dedicated category, and Anime movies/shows include a Dub/Sub audio toggle in the viewer when available.",
+		date: "2026-02-28",
+	},
+	{
 		id: "0.1.0",
 		title: "User Feature Added",
 		message: "The request for 'Added Actor/Movie/TV of the Day' has been added to the site! If you want your feature to be added to the site, submit a request through the carousel <3",

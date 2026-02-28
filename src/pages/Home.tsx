@@ -103,6 +103,7 @@ export default function Home() {
 
 	// Popular TV Shows
 	const [popularTV, setPopularTV] = useState<TVShow[]>([]);
+	const [animeTitles, setAnimeTitles] = useState<MixedRowItem[]>([]);
 
 	// Favorite Genre rows (2 pages)
 	const [favGenreMoviesP1, setFavGenreMoviesP1] = useState<
@@ -444,18 +445,58 @@ export default function Home() {
 	useEffect(() => {
 		const fetchData = async () => {
 			try {
-				const [popMovies, genreList, gems, tvShows] =
-					await Promise.all([
-						APIService.getPopularMovies(1),
-						APIService.getGenres(),
-						APIService.getHiddenGems(1),
-						APIService.getPopularTV(1),
-					]);
+				const [
+					popMovies,
+					genreList,
+					gems,
+					tvShows,
+					animeMovies,
+					animeTV,
+				] = await Promise.all([
+					APIService.getPopularMovies(1),
+					APIService.getGenres(),
+					APIService.getHiddenGems(1),
+					APIService.getPopularTV(1),
+					APIService.discoverMovies(
+						{
+							with_genres: "16",
+							with_original_language:
+								"ja",
+							sort_by: "popularity.desc",
+						},
+						1,
+					),
+					APIService.discoverTV(
+						{
+							with_genres: "16",
+							with_original_language:
+								"ja",
+							sort_by: "popularity.desc",
+						},
+						1,
+					),
+				]);
 
 				setPopular(popMovies);
 				setGenres(genreList);
 				setHiddenGems(gems);
 				setPopularTV(tvShows);
+				setAnimeTitles(
+					[
+						...animeMovies.map((movie) => ({
+							...movie,
+							_mediaType: "movie" as const,
+						})),
+						...animeTV.map((show) => ({
+							...show,
+							_mediaType: "tv" as const,
+						})),
+					].sort(
+						(a, b) =>
+							(b.vote_average || 0) -
+							(a.vote_average || 0),
+					),
+				);
 				GenreMap.seed(genreList);
 				await resolveDailyPicks(popMovies, tvShows);
 
@@ -1159,6 +1200,17 @@ export default function Home() {
 					title="Hidden Gems"
 					initialMovies={hiddenGems}
 					hideViewAll
+				/>
+			)}
+
+			{/* Anime */}
+			{animeTitles.length > 0 && (
+				<MovieRow
+					title="Anime"
+					initialMovies={animeTitles}
+					mediaType="mixed"
+					viewAllPath="/category/anime"
+					staticMovies
 				/>
 			)}
 

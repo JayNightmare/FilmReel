@@ -15,6 +15,7 @@ interface MovieRowProps {
 	staticMovies?: boolean;
 	hideViewAll?: boolean;
 	mediaType?: RowMediaType;
+	viewAllPath?: string;
 }
 
 /**
@@ -31,6 +32,7 @@ export const MovieRow = ({
 	staticMovies = false,
 	hideViewAll = false,
 	mediaType = "movie",
+	viewAllPath,
 }: MovieRowProps) => {
 	const [movies, setMovies] = useState<RowItem[]>([]);
 	const [page, setPage] = useState(2);
@@ -187,9 +189,10 @@ export const MovieRow = ({
 				{!hideViewAll && (
 					<Link
 						to={
-							isTrending
+							viewAllPath ||
+							(isTrending
 								? "/category/popular"
-								: `/category/${genre?.id}`
+								: `/category/${genre?.id}`)
 						}
 						className="category-link"
 					>

@@ -32,7 +32,9 @@ export default function MovieViewer() {
 
 	// Provider state
 	type Provider = "vidking" | "vidsrc" | "superembed";
+	type AudioTrack = "dub" | "sub";
 	const [provider, setProvider] = useState<Provider>("vidking");
+	const [audioTrack, setAudioTrack] = useState<AudioTrack>("dub");
 
 	const { openFeedback } = useFeedback();
 
@@ -168,14 +170,16 @@ export default function MovieViewer() {
 	};
 
 	const buildEmbedUrl = () => {
+		const animeLanguage = audioTrack === "dub" ? "en" : "ja";
+		const animeAudio = audioTrack === "dub" ? "dub" : "sub";
 		if (provider === "vidking") {
 			const params = new URLSearchParams({
 				color: "7f13ec",
 				autoPlay: "true",
 			});
 			if (isAnime) {
-				params.set("lang", "en");
-				params.set("audio", "dub");
+				params.set("lang", animeLanguage);
+				params.set("audio", animeAudio);
 			}
 			return `https://vidking.net/embed/movie/${id}?${params.toString()}`;
 		} else if (provider === "vidsrc") {
@@ -183,7 +187,7 @@ export default function MovieViewer() {
 				tmdb: id || "",
 			});
 			if (isAnime) {
-				params.set("ds_lang", "en");
+				params.set("ds_lang", animeLanguage);
 			}
 			return `https://vidsrc.me/embed/movie?${params.toString()}`;
 		} else if (provider === "superembed") {
@@ -192,8 +196,8 @@ export default function MovieViewer() {
 				tmdb: "1",
 			});
 			if (isAnime) {
-				params.set("lang", "en");
-				params.set("audio", "dub");
+				params.set("lang", animeLanguage);
+				params.set("audio", animeAudio);
 			}
 			return `https://multiembed.mov/directstream.php?${params.toString()}`;
 		}
@@ -633,6 +637,47 @@ export default function MovieViewer() {
 											SuperEmbed
 										</option>
 									</select>
+									{isAnime && (
+										<>
+											<span
+												className="label-glass viewer-meta-label"
+												style={{
+													marginTop: "10px",
+												}}
+											>
+												Audio
+												Track
+											</span>
+											<select
+												className="viewer-provider-select"
+												value={
+													audioTrack
+												}
+												onChange={(
+													e,
+												) => {
+													setAudioTrack(
+														e
+															.target
+															.value as AudioTrack,
+													);
+													if (
+														playing
+													) {
+														refreshIframe();
+													}
+												}}
+												title="Select Anime Audio Track"
+											>
+												<option value="dub">
+													Dub
+												</option>
+												<option value="sub">
+													Sub
+												</option>
+											</select>
+										</>
+									)}
 								</div>
 							</div>
 

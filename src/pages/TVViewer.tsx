@@ -8,6 +8,7 @@ import { useFeedback } from "../contexts/FeedbackContext";
 import "../styles/TVViewer.css";
 
 type Provider = "vidking" | "vidsrc" | "superembed";
+type AudioTrack = "dub" | "sub";
 
 const FALLBACK_POSTER =
 	"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 500 750' fill='none'%3E%3Crect width='500' height='750' fill='%231a1122'/%3E%3Ctext x='250' y='340' text-anchor='middle' fill='%237f13ec' font-family='system-ui' font-size='40' font-weight='bold'%3EFilmReel%3C/text%3E%3Ctext x='250' y='400' text-anchor='middle' fill='%23666' font-family='system-ui' font-size='20'%3ENo Poster%3C/text%3E%3C/svg%3E";
@@ -22,6 +23,7 @@ const TVViewer = () => {
 	);
 	const [playing, setPlaying] = useState(false);
 	const [provider, setProvider] = useState<Provider>("vidking");
+	const [audioTrack, setAudioTrack] = useState<AudioTrack>("dub");
 	const [cast, setCast] = useState<CastMember[]>([]);
 	const [similar, setSimilar] = useState<TVShow[]>([]);
 	const [inWatchlist, setInWatchlist] = useState(false);
@@ -119,6 +121,8 @@ const TVViewer = () => {
 		if (!selectedEpisode) return "about:blank";
 		const s = selectedEpisode.season_number;
 		const e = selectedEpisode.episode_number;
+		const animeLanguage = audioTrack === "dub" ? "en" : "ja";
+		const animeAudio = audioTrack === "dub" ? "dub" : "sub";
 
 		if (provider === "vidking") {
 			const params = new URLSearchParams({
@@ -126,8 +130,8 @@ const TVViewer = () => {
 				autoPlay: "true",
 			});
 			if (isAnime) {
-				params.set("lang", "en");
-				params.set("audio", "dub");
+				params.set("lang", animeLanguage);
+				params.set("audio", animeAudio);
 			}
 			return `https://vidking.net/embed/tv/${id}/${s}/${e}?${params.toString()}`;
 		} else if (provider === "vidsrc") {
@@ -137,7 +141,7 @@ const TVViewer = () => {
 				episode: e.toString(),
 			});
 			if (isAnime) {
-				params.set("ds_lang", "en");
+				params.set("ds_lang", animeLanguage);
 			}
 			return `https://vidsrc.me/embed/tv?${params.toString()}`;
 		} else if (provider === "superembed") {
@@ -148,8 +152,8 @@ const TVViewer = () => {
 				e: e.toString(),
 			});
 			if (isAnime) {
-				params.set("lang", "en");
-				params.set("audio", "dub");
+				params.set("lang", animeLanguage);
+				params.set("audio", animeAudio);
 			}
 			return `https://multiembed.mov/directstream.php?${params.toString()}`;
 		}
@@ -644,6 +648,47 @@ const TVViewer = () => {
 											SuperEmbed
 										</option>
 									</select>
+									{isAnime && (
+										<>
+											<span
+												className="label-glass tv-meta-label"
+												style={{
+													marginTop: "10px",
+												}}
+											>
+												Audio
+												Track
+											</span>
+											<select
+												className="tv-provider-select"
+												value={
+													audioTrack
+												}
+												onChange={(
+													e,
+												) => {
+													setAudioTrack(
+														e
+															.target
+															.value as AudioTrack,
+													);
+													if (
+														playing
+													) {
+														refreshIframe();
+													}
+												}}
+												title="Select Anime Audio Track"
+											>
+												<option value="dub">
+													Dub
+												</option>
+												<option value="sub">
+													Sub
+												</option>
+											</select>
+										</>
+									)}
 								</div>
 							</div>
 
