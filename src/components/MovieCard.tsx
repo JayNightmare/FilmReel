@@ -36,7 +36,12 @@ export const MovieCard = ({ movie, mediaType = "movie" }: MovieCardProps) => {
 	const genreName = movie.genre_ids?.[0]
 		? GenreMap.getName(movie.genre_ids[0])
 		: "Film";
-	const isWatched = StorageService.hasWatched(movie.id);
+	const isWatchedMovie =
+		mediaType === "movie" && StorageService.hasWatched(movie.id);
+	const tvProgress =
+		mediaType === "tv"
+			? StorageService.getTVProgress(movie.id)
+			: null;
 
 	const toggleWatchlist = (e: React.MouseEvent) => {
 		e.preventDefault();
@@ -58,6 +63,7 @@ export const MovieCard = ({ movie, mediaType = "movie" }: MovieCardProps) => {
 	const removeWatchedMovie = (e: React.MouseEvent) => {
 		e.preventDefault();
 		e.stopPropagation();
+		if (mediaType !== "movie") return;
 		StorageService.removeWatchedMovie(movie.id);
 	};
 
@@ -81,7 +87,7 @@ export const MovieCard = ({ movie, mediaType = "movie" }: MovieCardProps) => {
 				</div>
 
 				<div className="movie-card-controls">
-					{isWatched && (
+					{isWatchedMovie && (
 						<button
 							className="movie-remove"
 							onClick={
@@ -123,6 +129,27 @@ export const MovieCard = ({ movie, mediaType = "movie" }: MovieCardProps) => {
 								).getFullYear()
 							: "Unknown Year"}
 					</p>
+					{tvProgress && (
+						<p className="movie-progress">
+							S
+							{
+								tvProgress
+									.lastWatchedEpisode
+									.seasonNumber
+							}
+							:E
+							{
+								tvProgress
+									.lastWatchedEpisode
+									.episodeNumber
+							}{" "}
+							•{" "}
+							{
+								tvProgress.watchedEpisodes
+							}{" "}
+							watched
+						</p>
+					)}
 				</div>
 			</div>
 		</Link>

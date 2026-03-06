@@ -1,12 +1,21 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Link } from "react-router-dom";
+import { APIService } from "../services/api";
+import type { Movie, TVShow } from "../services/api";
 import { StorageService } from "../services/storage";
 import type {
 	UserProfile,
 	MoodResult,
 	WatchlistItem,
+	TVShowProgress,
 } from "../services/storage";
+import { useStorageSync } from "../hooks/useStorageSync";
+import { MovieCard } from "../components/MovieCard";
 import "../styles/Account.css";
+
+const WATCHLIST_KEY = "filmreel_watchlist";
+const WATCHED_MOVIES_KEY = "filmreel_watched_movies";
+const TV_PROGRESS_KEY = "filmreel_tv_progress";
 
 const FALLBACK_POSTER =
 	"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 500 750' fill='none'%3E%3Crect width='500' height='750' fill='%231a1122'/%3E%3Ctext x='250' y='340' text-anchor='middle' fill='%237f13ec' font-family='system-ui' font-size='40' font-weight='bold'%3EFilmReel%3C/text%3E%3Ctext x='250' y='400' text-anchor='middle' fill='%23666' font-family='system-ui' font-size='20'%3ENo Poster%3C/text%3E%3C/svg%3E";
@@ -18,9 +27,20 @@ export default function Account() {
 	const [history] = useState<MoodResult[]>(() =>
 		StorageService.getMoodHistory(),
 	);
-	const [watchlist, setWatchlist] = useState<WatchlistItem[]>(() =>
-		StorageService.getWatchlist(),
+	const watchlist = useStorageSync<WatchlistItem[]>(
+		WATCHLIST_KEY,
+		StorageService.getWatchlist,
 	);
+	const watchedMovieIds = useStorageSync<number[]>(
+		WATCHED_MOVIES_KEY,
+		StorageService.getWatchedMovies,
+	);
+	const watchedTVProgress = useStorageSync<TVShowProgress[]>(
+		TV_PROGRESS_KEY,
+		StorageService.getAllTVProgress,
+	);
+	const [watchedMovies, setWatchedMovies] = useState<Movie[]>([]);
+	const [isHistoryLoading, setIsHistoryLoading] = useState(false);
 	const [isSaving, setIsSaving] = useState(false);
 	const [toast, setToast] = useState<string | null>(null);
 
@@ -28,6 +48,69 @@ export default function Account() {
 		setToast(message);
 		setTimeout(() => setToast(null), 2500);
 	}, []);
+
+	const watchedTVCards: TVShow[] = watchedTVProgress
+		.slice(0, 30)
+		.map((progress) => ({
+			id: progress.tvId,
+			name: progress.showTitle,
+			poster_path: progress.posterPath,
+			backdrop_path: null,
+			overview: "",
+			vote_average: 0,
+			first_air_date: "",
+			genre_ids: [],
+			number_of_seasons: progress.totalSeasons,
+			number_of_episodes: progress.totalEpisodes,
+		}));
+
+	useEffect(() => {
+		if (watchedMovieIds.length === 0) {
+			setWatchedMovies([]);
+			setIsHistoryLoading(false);
+			return;
+		}
+
+		let cancelled = false;
+		setIsHistoryLoading(true);
+
+		const loadWatchedMovies = async () => {
+			const settled = await Promise.allSettled(
+				watchedMovieIds
+					.slice(0, 30)
+					.map((id) =>
+						APIService.getMovieDetails(id),
+					),
+			);
+
+			const resolvedMovies = settled
+				.filter(
+					(
+						result,
+					): result is PromiseFulfilledResult<Movie> =>
+						result.status === "fulfilled",
+				)
+				.map((result) => result.value);
+
+			if (!cancelled) {
+				setWatchedMovies(resolvedMovies);
+				setIsHistoryLoading(false);
+			}
+
+			const failedCount =
+				settled.length - resolvedMovies.length;
+			if (failedCount > 0) {
+				console.warn(
+					`Failed to load ${failedCount} watched movie detail(s) on Account page.`,
+				);
+			}
+		};
+
+		void loadWatchedMovies();
+		return () => {
+			cancelled = true;
+		};
+	}, [watchedMovieIds]);
 
 	const handleImageUpload = async (
 		e: React.ChangeEvent<HTMLInputElement>,
@@ -84,8 +167,16 @@ export default function Account() {
 
 	const removeFromWatchlist = (movieId: number) => {
 		StorageService.removeFromWatchlist(movieId);
-		setWatchlist(StorageService.getWatchlist());
 		showToast("Removed from watchlist");
+	};
+
+	const resetWatchedHistory = () => {
+		const confirmed = window.confirm(
+			"Reset all watch history? This clears movie history and TV episode progress.",
+		);
+		if (!confirmed) return;
+		StorageService.clearWatchedHistory();
+		showToast("Watch history reset");
 	};
 
 	return (
@@ -372,8 +463,8 @@ export default function Account() {
 						>
 							{watchlist.length}{" "}
 							{watchlist.length === 1
-								? "movie"
-								: "movies"}
+								? "title"
+								: "titles"}
 						</span>
 					)}
 				</div>
@@ -398,7 +489,12 @@ export default function Account() {
 								}}
 							>
 								<Link
-									to={`/movie/${item.id}`}
+									to={
+										item.mediaType ===
+										"tv"
+											? `/tv/${item.id}`
+											: `/movie/${item.id}`
+									}
 									style={{
 										textDecoration:
 											"none",
@@ -455,6 +551,145 @@ export default function Account() {
 						))}
 					</div>
 				)}
+			</div>
+
+			{/* Watch History Section */}
+			<div className="account-watch-history">
+				<div className="account-watchlist-header">
+					<h2 className="account-sidebar-title">
+						<span
+							className="material-symbols-outlined text-purple"
+							style={{
+								fontSize: "24px",
+							}}
+						>
+							history
+						</span>
+						Watch History
+					</h2>
+					{(watchedMovieIds.length > 0 ||
+						watchedTVProgress.length >
+							0) && (
+						<button
+							type="button"
+							onClick={
+								resetWatchedHistory
+							}
+							className="btn btn-glass account-history-reset"
+						>
+							Reset History
+						</button>
+					)}
+				</div>
+
+				{isHistoryLoading &&
+					watchedMovies.length === 0 && (
+						<div className="glass-panel account-watchlist-empty">
+							<span className="material-symbols-outlined">
+								autorenew
+							</span>
+							Loading watch history...
+						</div>
+					)}
+
+				{watchedMovies.length > 0 && (
+					<>
+						<p className="account-history-label">
+							Movies
+						</p>
+						<div className="account-watchlist-grid">
+							{watchedMovies.map(
+								(movie) => (
+									<MovieCard
+										key={`movie-${movie.id}`}
+										movie={
+											movie
+										}
+										mediaType="movie"
+									/>
+								),
+							)}
+						</div>
+					</>
+				)}
+
+				{watchedTVCards.length > 0 && (
+					<>
+						<p className="account-history-label">
+							TV Episodes
+						</p>
+						<div className="account-watchlist-grid account-tv-history-grid">
+							{watchedTVCards.map(
+								(show) => {
+									const progress =
+										watchedTVProgress.find(
+											(
+												item,
+											) =>
+												item.tvId ===
+												show.id,
+										);
+									if (
+										!progress
+									)
+										return null;
+
+									return (
+										<div
+											key={`tv-${show.id}`}
+											className="account-tv-history-item"
+										>
+											<MovieCard
+												movie={
+													show
+												}
+												mediaType="tv"
+											/>
+											<div className="glass-panel account-tv-progress-meta">
+												<p>
+													Last
+													watched:
+													S
+													{
+														progress
+															.lastWatchedEpisode
+															.seasonNumber
+													}
+													:E
+													{
+														progress
+															.lastWatchedEpisode
+															.episodeNumber
+													}
+												</p>
+												<p>
+													Episodes
+													watched:{" "}
+													{
+														progress.watchedEpisodes
+													}
+												</p>
+											</div>
+										</div>
+									);
+								},
+							)}
+						</div>
+					</>
+				)}
+
+				{!isHistoryLoading &&
+					watchedMovies.length === 0 &&
+					watchedTVCards.length === 0 && (
+						<div className="glass-panel account-watchlist-empty">
+							<span className="material-symbols-outlined">
+								history_toggle_off
+							</span>
+							No watch history yet.
+							Start a movie or episode
+							to build your timeline.
+						</div>
+					)}
 			</div>
 
 			{/* Toast */}

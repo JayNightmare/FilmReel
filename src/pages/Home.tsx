@@ -10,6 +10,7 @@ import "../styles/Home.css";
 
 const WATCHLIST_KEY = "filmreel_watchlist";
 const WATCHED_MOVIES_KEY = "filmreel_watched_movies";
+const TV_PROGRESS_KEY = "filmreel_tv_progress";
 const ACTOR_OF_DAY_KEY = "filmreel_actor_of_day";
 const TITLE_OF_DAY_KEY = "filmreel_title_of_day";
 const ABOUT_SHORTCUT_DISMISSED_KEY = "filmreel_about_shortcut_dismissed";
@@ -154,6 +155,10 @@ export default function Home() {
 		WATCHED_MOVIES_KEY,
 		StorageService.getWatchedMovies,
 	);
+	const tvProgress = useStorageSync(
+		TV_PROGRESS_KEY,
+		StorageService.getAllTVProgress,
+	);
 	const profile = useStorageSync(
 		"filmreel_user_profile",
 		StorageService.getProfile,
@@ -171,6 +176,21 @@ export default function Home() {
 		genre_ids: [],
 	}));
 
+	const continueWatchingTV: TVShow[] = tvProgress
+		.slice(0, 20)
+		.map((progress) => ({
+			id: progress.tvId,
+			name: progress.showTitle,
+			poster_path: progress.posterPath,
+			backdrop_path: null,
+			overview: "",
+			vote_average: 0,
+			first_air_date: "",
+			genre_ids: [],
+			number_of_seasons: progress.totalSeasons,
+			number_of_episodes: progress.totalEpisodes,
+		}));
+
 	// Fetch watched movie details when watched list changes
 	useEffect(() => {
 		if (watchedMovies.length === 0) {
@@ -180,21 +200,31 @@ export default function Home() {
 
 		let cancelled = false;
 		const fetchMovies = async () => {
-			try {
-				const movies = await Promise.all(
-					watchedMovies
-						.slice(0, 20)
-						.map((id) =>
-							APIService.getMovieDetails(
-								id,
-							),
-						),
-				);
-				if (!cancelled) setWatchedLiveMovies(movies);
-			} catch (err) {
-				console.error(
-					"Failed to load watched movies:",
-					err,
+			const settled = await Promise.allSettled(
+				watchedMovies
+					.slice(0, 20)
+					.map((id) =>
+						APIService.getMovieDetails(id),
+					),
+			);
+
+			const movies = settled
+				.filter(
+					(
+						result,
+					): result is PromiseFulfilledResult<Movie> =>
+						result.status === "fulfilled",
+				)
+				.map((result) => result.value);
+
+			if (!cancelled) {
+				setWatchedLiveMovies(movies);
+			}
+
+			const failedCount = settled.length - movies.length;
+			if (failedCount > 0) {
+				console.warn(
+					`Failed to load ${failedCount} watched movie detail(s).`,
 				);
 			}
 		};
@@ -1141,6 +1171,17 @@ export default function Home() {
 					initialMovies={watchedLiveMovies}
 					staticMovies
 					hideViewAll
+				/>
+			)}
+
+			{/* 1b. Continue Watching (TV) */}
+			{continueWatchingTV.length > 0 && (
+				<MovieRow
+					title="Continue Watching"
+					initialMovies={continueWatchingTV}
+					staticMovies
+					hideViewAll
+					mediaType="tv"
 				/>
 			)}
 

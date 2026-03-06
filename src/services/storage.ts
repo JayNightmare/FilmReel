@@ -18,10 +18,49 @@ export interface WatchlistItem {
 	mediaType?: "movie" | "tv";
 }
 
+export interface WatchedEpisode {
+	tvId: number;
+	seasonNumber: number;
+	episodeNumber: number;
+	showTitle: string;
+	posterPath: string | null;
+	watchedAt: string; // ISO String
+}
+
+export interface TVShowProgress {
+	tvId: number;
+	showTitle: string;
+	posterPath: string | null;
+	totalSeasons: number;
+	totalEpisodes: number;
+	watchedEpisodes: number;
+	lastWatchedEpisode: {
+		seasonNumber: number;
+		episodeNumber: number;
+		watchedAt: string;
+	};
+	updatedAt: string; // ISO String
+}
+
 const PROFILE_KEY = "filmreel_user_profile";
 const MOOD_HISTORY_KEY = "filmreel_mood_history";
 const WATCHLIST_KEY = "filmreel_watchlist";
 const WATCHED_MOVIES_KEY = "filmreel_watched_movies";
+const WATCHED_EPISODES_KEY = "filmreel_watched_episodes";
+const TV_PROGRESS_KEY = "filmreel_tv_progress";
+const MAX_WATCHED_MOVIES = 100;
+const MAX_WATCHED_EPISODES = 1000;
+
+const getParsedArray = <T,>(key: string): T[] => {
+	try {
+		const data = localStorage.getItem(key);
+		if (!data) return [];
+		const parsed = JSON.parse(data);
+		return Array.isArray(parsed) ? (parsed as T[]) : [];
+	} catch {
+		return [];
+	}
+};
 
 // Default Profile
 const defaultProfile: UserProfile = {
@@ -44,16 +83,16 @@ export const StorageService = {
 					? rawFavoriteGenreId
 					: typeof rawFavoriteGenreId === "string"
 						? Number.parseInt(
-								rawFavoriteGenreId,
-								10,
-							)
+							rawFavoriteGenreId,
+							10,
+						)
 						: null;
 
 			return {
 				displayName:
 					typeof parsed.displayName ===
 						"string" &&
-					parsed.displayName.trim().length > 0
+						parsed.displayName.trim().length > 0
 						? parsed.displayName
 						: defaultProfile.displayName,
 				avatarBase64:
@@ -139,26 +178,27 @@ export const StorageService = {
 
 	// --- Watched Movies Tracking ---
 	markAsWatched: (movieId: number): void => {
+		let didChange = false;
 		try {
-			const data = localStorage.getItem(WATCHED_MOVIES_KEY);
-			const watched: number[] = data ? JSON.parse(data) : [];
+			const watched = getParsedArray<number>(
+				WATCHED_MOVIES_KEY,
+			);
 
 			if (!watched.includes(movieId)) {
 				// Keep the most recent 100 watched movies to prevent infinite buildup
-				const updated = [movieId, ...watched].slice(
-					0,
-					100,
-				);
+				const updated = [movieId, ...watched].slice(0, MAX_WATCHED_MOVIES);
 				localStorage.setItem(
 					WATCHED_MOVIES_KEY,
 					JSON.stringify(updated),
 				);
-				StorageService.dispatchStorageEvent(
-					WATCHED_MOVIES_KEY,
-				);
+				didChange = true;
 			}
-		} catch {
-			/* storage full — silently fail */
+		} catch (err) {
+			console.warn("Failed to mark movie as watched:", err);
+		} finally {
+			if (didChange) {
+				StorageService.dispatchStorageEvent(WATCHED_MOVIES_KEY);
+			}
 		}
 	},
 
@@ -174,19 +214,14 @@ export const StorageService = {
 	},
 
 	getWatchedMovies: (): number[] => {
-		try {
-			const data = localStorage.getItem(WATCHED_MOVIES_KEY);
-			return data ? JSON.parse(data) : [];
-		} catch {
-			return [];
-		}
+		return getParsedArray<number>(WATCHED_MOVIES_KEY);
 	},
 
 	removeWatchedMovie: (movieId: number): void => {
 		try {
-			const data = localStorage.getItem(WATCHED_MOVIES_KEY);
-			if (!data) return;
-			const watched: number[] = JSON.parse(data);
+			const watched = getParsedArray<number>(
+				WATCHED_MOVIES_KEY,
+			);
 			const filtered = watched.filter((id) => id !== movieId);
 			localStorage.setItem(
 				WATCHED_MOVIES_KEY,
@@ -195,6 +230,143 @@ export const StorageService = {
 			StorageService.dispatchStorageEvent(WATCHED_MOVIES_KEY);
 		} catch {
 			/* silently fail */
+		}
+	},
+
+	// --- Episode-level TV Tracking ---
+	getWatchedEpisodes: (tvId?: number): WatchedEpisode[] => {
+		const episodes = getParsedArray<WatchedEpisode>(
+			WATCHED_EPISODES_KEY,
+		);
+		const filtered =
+			typeof tvId === "number"
+				? episodes.filter((episode) => episode.tvId === tvId)
+				: episodes;
+		return filtered.sort((a, b) => b.watchedAt.localeCompare(a.watchedAt));
+	},
+
+	hasEpisodeWatched: (
+		tvId: number,
+		seasonNumber: number,
+		episodeNumber: number,
+	): boolean => {
+		return StorageService.getWatchedEpisodes(tvId).some(
+			(episode) =>
+				episode.seasonNumber === seasonNumber &&
+				episode.episodeNumber === episodeNumber,
+		);
+	},
+
+	getAllTVProgress: (): TVShowProgress[] => {
+		return getParsedArray<TVShowProgress>(TV_PROGRESS_KEY).sort((a, b) =>
+			b.updatedAt.localeCompare(a.updatedAt),
+		);
+	},
+
+	getTVProgress: (tvId: number): TVShowProgress | null => {
+		return (
+			StorageService.getAllTVProgress().find(
+				(progress) => progress.tvId === tvId,
+			) ?? null
+		);
+	},
+
+	markEpisodeWatched: (input: {
+		tvId: number;
+		showTitle: string;
+		posterPath: string | null;
+		totalSeasons: number;
+		totalEpisodes: number;
+		seasonNumber: number;
+		episodeNumber: number;
+	}): void => {
+		const watchedAt = new Date().toISOString();
+		try {
+			const existingEpisodes = getParsedArray<WatchedEpisode>(
+				WATCHED_EPISODES_KEY,
+			);
+
+			const dedupedEpisodes = existingEpisodes.filter(
+				(episode) =>
+					!(
+						episode.tvId === input.tvId &&
+						episode.seasonNumber === input.seasonNumber &&
+						episode.episodeNumber ===
+						input.episodeNumber
+					),
+			);
+
+			const newEpisode: WatchedEpisode = {
+				tvId: input.tvId,
+				seasonNumber: input.seasonNumber,
+				episodeNumber: input.episodeNumber,
+				showTitle: input.showTitle,
+				posterPath: input.posterPath,
+				watchedAt,
+			};
+
+			const updatedEpisodes = [newEpisode, ...dedupedEpisodes].slice(
+				0,
+				MAX_WATCHED_EPISODES,
+			);
+
+			localStorage.setItem(
+				WATCHED_EPISODES_KEY,
+				JSON.stringify(updatedEpisodes),
+			);
+
+			const allProgress = getParsedArray<TVShowProgress>(
+				TV_PROGRESS_KEY,
+			);
+			const currentShowEpisodes = updatedEpisodes.filter(
+				(episode) => episode.tvId === input.tvId,
+			);
+
+			const progressEntry: TVShowProgress = {
+				tvId: input.tvId,
+				showTitle: input.showTitle,
+				posterPath: input.posterPath,
+				totalSeasons: input.totalSeasons,
+				totalEpisodes: input.totalEpisodes,
+				watchedEpisodes: currentShowEpisodes.length,
+				lastWatchedEpisode: {
+					seasonNumber: input.seasonNumber,
+					episodeNumber: input.episodeNumber,
+					watchedAt,
+				},
+				updatedAt: watchedAt,
+			};
+
+			const updatedProgress = [
+				progressEntry,
+				...allProgress.filter(
+					(progress) => progress.tvId !== input.tvId,
+				),
+			];
+
+			localStorage.setItem(
+				TV_PROGRESS_KEY,
+				JSON.stringify(updatedProgress),
+			);
+
+			StorageService.dispatchStorageEvent(
+				WATCHED_EPISODES_KEY,
+			);
+			StorageService.dispatchStorageEvent(TV_PROGRESS_KEY);
+		} catch (err) {
+			console.warn("Failed to mark episode as watched:", err);
+		}
+	},
+
+	clearWatchedHistory: (): void => {
+		try {
+			localStorage.removeItem(WATCHED_MOVIES_KEY);
+			localStorage.removeItem(WATCHED_EPISODES_KEY);
+			localStorage.removeItem(TV_PROGRESS_KEY);
+		} finally {
+			StorageService.dispatchStorageEvent(WATCHED_MOVIES_KEY);
+			StorageService.dispatchStorageEvent(WATCHED_EPISODES_KEY);
+			StorageService.dispatchStorageEvent(TV_PROGRESS_KEY);
 		}
 	},
 

@@ -73,6 +73,12 @@
     margin: 4px 0 0 0;
 }
 
+.movie-progress {
+    color: rgba(255, 255, 255, 0.82);
+    font-size: 0.7rem;
+    margin: 4px 0 0 0;
+}
+
 .movie-bookmark {
     position: relative;
     z-index: 15;

@@ -161,9 +161,25 @@ const TVViewer = () => {
 	};
 
 	const handlePlay = () => {
-		if (!selectedEpisode) return;
+		if (!selectedEpisode || !show) return;
 		setPlaying(true);
-		StorageService.markAsWatched(parseInt(id!, 10));
+		StorageService.markEpisodeWatched({
+			tvId: show.id,
+			showTitle: show.name,
+			posterPath: show.poster_path,
+			totalSeasons:
+				show.number_of_seasons ?? validSeasons.length,
+			totalEpisodes:
+				show.number_of_episodes ??
+				validSeasons.reduce(
+					(total, seasonItem) =>
+						total +
+						(seasonItem.episode_count ?? 0),
+					0,
+				),
+			seasonNumber: selectedEpisode.season_number,
+			episodeNumber: selectedEpisode.episode_number,
+		});
 	};
 
 	const handleNextEpisode = () => {
