@@ -142,7 +142,8 @@
     width: 100%;
     border-radius: 24px;
     overflow: hidden;
-    min-height: 500px;
+    min-height: 540px;
+    max-height: 540px;
     display: flex;
     align-items: flex-end;
     padding: 48px 32px;
