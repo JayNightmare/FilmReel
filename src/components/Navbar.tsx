@@ -693,11 +693,14 @@ export const Navbar = () => {
 						className="nav-about-link"
 						title="About FilmReel"
 					>
-						About
+						<span className="material-symbols-outlined">
+							info
+						</span>
 					</Link>
 					<div>
 						<button
 							className="nav-icon-button"
+							title="Leave Feedback"
 							onClick={() =>
 								openFeedback()
 							}
@@ -732,6 +735,7 @@ export const Navbar = () => {
 					>
 						<button
 							className="nav-icon-button"
+							title="Notifications"
 							onClick={toggleNotifs}
 						>
 							<span className="material-symbols-outlined">

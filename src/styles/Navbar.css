@@ -73,8 +73,10 @@
     font-size: 0.95rem;
     font-weight: 600;
     padding: 8px 10px;
-    border-radius: 999px;
+    border-radius: 9999px;
     transition: color 0.2s, background 0.2s;
+    display: flex;
+    align-items: center;
 }
 
 .nav-about-link:hover {
@@ -83,15 +85,16 @@
 }
 
 .nav-mood-button {
-    margin-right: 8px;
     display: flex;
     align-items: center;
     border: none;
+    padding: 8px 12px;
+    border-radius: 9999px;
     background: transparent;
 }
 
 .nav-mood-button:hover {
-    background: transparent;
+    background: rgba(255, 255, 255, 0.05);
     /* Fix for issue 3 */
 }
 
