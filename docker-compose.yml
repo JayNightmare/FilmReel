@@ -1,0 +1,8 @@
+services:
+  filmreel:
+    build: .
+    ports:
+      - "1264:1264"
+    environment:
+      - NODE_ENV=production
+    restart: unless-stopped
