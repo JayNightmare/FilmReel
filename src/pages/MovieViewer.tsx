@@ -27,13 +27,13 @@ export default function MovieViewer() {
 	const [playing, setPlaying] = useState(false);
 	const [iframeKey, setIframeKey] = useState(0);
 
-	// Playback state (from VidKing postMessage)
+	// Playback state
 	const [controlsVisible, setControlsVisible] = useState(true);
 
 	// Provider state
-	type Provider = "vidking" | "vidsrc" | "superembed";
+	type Provider = "superembed";
 	type AudioTrack = "dub" | "sub";
-	const [provider, setProvider] = useState<Provider>("vidking");
+	const [provider, setProvider] = useState<Provider>("superembed");
 	const [audioTrack, setAudioTrack] = useState<AudioTrack>("dub");
 
 	const { openFeedback } = useFeedback();
@@ -172,25 +172,7 @@ export default function MovieViewer() {
 	const buildEmbedUrl = () => {
 		const animeLanguage = audioTrack === "dub" ? "en" : "ja";
 		const animeAudio = audioTrack === "dub" ? "dub" : "sub";
-		if (provider === "vidking") {
-			const params = new URLSearchParams({
-				color: "7f13ec",
-				autoPlay: "true",
-			});
-			if (isAnime) {
-				params.set("lang", animeLanguage);
-				params.set("audio", animeAudio);
-			}
-			return `https://vidking.net/embed/movie/${id}?${params.toString()}`;
-		} else if (provider === "vidsrc") {
-			const params = new URLSearchParams({
-				tmdb: id || "",
-			});
-			if (isAnime) {
-				params.set("ds_lang", animeLanguage);
-			}
-			return `https://vidsrc.me/embed/movie?${params.toString()}`;
-		} else if (provider === "superembed") {
+		if (provider === "superembed") {
 			const params = new URLSearchParams({
 				video_id: id || "",
 				tmdb: "1",
@@ -199,7 +181,7 @@ export default function MovieViewer() {
 				params.set("lang", animeLanguage);
 				params.set("audio", animeAudio);
 			}
-			return `https://multiembed.mov/directstream.php?${params.toString()}`;
+			return `/se_player.php?${params.toString()}`;
 		}
 		return "about:blank";
 	};
@@ -626,15 +608,9 @@ export default function MovieViewer() {
 										}}
 										title="Select Streaming Provider"
 									>
-										<option value="vidking">
-											VidKing
-											(Recommended)
-										</option>
-										<option value="vidsrc">
-											VidSrc
-										</option>
 										<option value="superembed">
 											SuperEmbed
+											(Recommended)
 										</option>
 									</select>
 									{isAnime && (

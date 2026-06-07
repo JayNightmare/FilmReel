@@ -18,7 +18,7 @@
 - Netflix-style MovieViewer: full-viewport player, gradient fade, scroll-for-details, below-the-fold info.
 - Stitch UI immersive player overlay: glassmorphism control bar, title pill, center play, Mood Mode, cinematic backdrop.
 - [Movie](file:///v:/Documents/Personal%20Projects/FilmReel/src/services/api.ts#5-16) interface includes optional `runtime` field.
-- PostMessage player sync: live progress/time from VidKing `PLAYER_EVENT`, auto-hide controls on idle, resume-from-saved-progress via `StorageService`.
+- PostMessage player sync: auto-hide controls on idle, resume-from-saved-progress via `StorageService`.
 - About page is live with first-person project/developer narrative, privacy-first details, and public GitHub/repository references.
 - Home now includes an About shortcut card that can be dismissed and persisted in localStorage.
 - Feedback modal can now be launched directly from the About page in addition to Navbar entry points.
@@ -62,5 +62,5 @@
 - Data Persistence: LocalStorage (No Backend Database).
 - Architecture: Functional Components with Hooks.
 - APIs:
-     - Video stream/information: `vidking.net`, `vidsrc.me`, `multiembed.mov`
+     - Video stream/information: SuperEmbed (`se_player.php`)
      - Metadata: TMDB

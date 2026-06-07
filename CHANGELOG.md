@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- Feature: Replaced VidKing and VidSrc streaming providers with SuperEmbed (using advanced `se_player.php` method).
 - Feature: Updated Search Results page to simultaneously query and interleave Movies and TV Shows.
 - Feature: Added Film/TV badge to `MovieCard` components.
 - Feature: Episode-level watched tracking for TV series.
