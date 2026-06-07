@@ -135,7 +135,7 @@ const TVViewer = () => {
 				params.set("lang", animeLanguage);
 				params.set("audio", animeAudio);
 			}
-			return `/se_player.php?${params.toString()}`;
+			return `/api/player?${params.toString()}`;
 		}
 		return "about:blank";
 	};

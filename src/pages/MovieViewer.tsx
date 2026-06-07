@@ -181,7 +181,8 @@ export default function MovieViewer() {
 				params.set("lang", animeLanguage);
 				params.set("audio", animeAudio);
 			}
-			return `/se_player.php?${params.toString()}`;
+			// Use the local Vercel API endpoint
+			return `/api/player?${params.toString()}`;
 		}
 		return "about:blank";
 	};
