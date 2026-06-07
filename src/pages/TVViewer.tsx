@@ -159,6 +159,7 @@ const TVViewer = () => {
 				),
 			seasonNumber: selectedEpisode.season_number,
 			episodeNumber: selectedEpisode.episode_number,
+			genre_ids: genreIds,
 		});
 	};
 

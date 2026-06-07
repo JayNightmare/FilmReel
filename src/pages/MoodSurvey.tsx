@@ -2,9 +2,11 @@
 import { useState } from "react";
 import { StorageService } from "../services/storage";
 import { APIService } from "../services/api";
-import type { Movie } from "../services/api";
+import type { Movie, TVShow } from "../services/api";
 import { MovieCard } from "../components/MovieCard";
 import "../styles/MoodSurvey.css";
+
+type MediaResult = (Movie | TVShow) & { mediaType: "movie" | "tv" };
 
 // Base Questions
 const BASE_QUESTIONS = [
@@ -101,8 +103,8 @@ export default function MoodSurvey() {
 	const [isExtendedMode, setIsExtendedMode] = useState(false);
 
 	// Data States
-	const [baseMovies, setBaseMovies] = useState<Movie[]>([]);
-	const [resultMovies, setResultMovies] = useState<Movie[]>([]);
+	const [baseMovies, setBaseMovies] = useState<MediaResult[]>([]);
+	const [resultMovies, setResultMovies] = useState<MediaResult[]>([]);
 	const [winningGenre, setWinningGenre] = useState<{
 		id: number;
 		name: string;
@@ -202,24 +204,53 @@ export default function MoodSurvey() {
 		finalScores: Record<number, number>,
 	) => {
 		try {
-			let maxScore = -1;
-			let topGenre = 28; // fallback action
+			const historyPrefs = StorageService.getHistoricalGenrePreferences();
+			const blendedScores: Record<number, number> = {};
 
-			Object.entries(finalScores).forEach(
-				([genreId, score]) => {
-					if (score > maxScore) {
-						maxScore = score;
-						topGenre = parseInt(genreId);
-					}
-				},
-			);
+			let maxSurvey = 0;
+			Object.values(finalScores).forEach(s => { if (s > maxSurvey) maxSurvey = s; });
+			let maxHistory = 0;
+			Object.values(historyPrefs).forEach(s => { if (s > maxHistory) maxHistory = s; });
+
+			const allKeys = new Set([...Object.keys(finalScores), ...Object.keys(historyPrefs)]);
+			
+			let maxBlended = -1;
+			let topGenre = 28;
+
+			allKeys.forEach(key => {
+				const gid = parseInt(key, 10);
+				const sScore = maxSurvey > 0 ? (finalScores[gid] || 0) / maxSurvey : 0;
+				const hScore = maxHistory > 0 ? (historyPrefs[gid] || 0) / maxHistory : 0;
+				
+				// 80% survey, 20% history
+				const blended = (sScore * 0.8) + (hScore * 0.2);
+				blendedScores[gid] = blended;
+
+				if (blended > maxBlended) {
+					maxBlended = blended;
+					topGenre = gid;
+				}
+			});
 
 			const genreName = GENRE_NAMES[topGenre] || "Movies";
-			const movies =
-				await APIService.getMoviesByGenre(topGenre);
+			
+			const [movieData, tvData] = await Promise.all([
+				APIService.discoverMovies({ with_genres: topGenre.toString(), sort_by: "popularity.desc" }),
+				APIService.discoverTV({ with_genres: topGenre.toString(), sort_by: "popularity.desc" })
+			]);
 
-			setBaseMovies(movies);
-			setResultMovies(movies);
+			const moviesTagged = movieData.map(m => ({ ...m, mediaType: "movie" as const }));
+			const tvTagged = tvData.map(t => ({ ...t, mediaType: "tv" as const }));
+			
+			const interleaved: MediaResult[] = [];
+			const maxLength = Math.max(moviesTagged.length, tvTagged.length);
+			for (let i = 0; i < maxLength; i++) {
+				if (moviesTagged[i]) interleaved.push(moviesTagged[i]);
+				if (tvTagged[i]) interleaved.push(tvTagged[i]);
+			}
+
+			setBaseMovies(interleaved);
+			setResultMovies(interleaved);
 			setWinningGenre({ id: topGenre, name: genreName });
 
 			StorageService.addMoodResult({
@@ -241,14 +272,14 @@ export default function MoodSurvey() {
 		// Since fetching reviews for 20 movies takes a while, we take top 10 to speed up
 		try {
 			const candidates = baseMovies.slice(0, 10);
-			const matches: { movie: Movie; score: number }[] = [];
+			const matches: { media: MediaResult; score: number }[] = [];
 
 			for (const m of candidates) {
-				const reviews =
-					await APIService.getMovieReviews(m.id);
-				const reviewText = reviews
-					.map((r) => r.content.toLowerCase())
-					.join(" ");
+				let reviewText = "";
+				if (m.mediaType === "movie") {
+					const reviews = await APIService.getMovieReviews(m.id);
+					reviewText = reviews.map((r) => r.content.toLowerCase()).join(" ");
+				}
 
 				let score = 0;
 				currentKeywords.forEach((kw) => {
@@ -261,7 +292,7 @@ export default function MoodSurvey() {
 					}
 				});
 
-				matches.push({ movie: m, score });
+				matches.push({ media: m, score });
 			}
 
 			// Sort by sentiment match score, fallback to popularity if 0
@@ -269,7 +300,7 @@ export default function MoodSurvey() {
 
 			// Re-order the results based on matches
 			const newResults = [
-				...matches.map((m) => m.movie),
+				...matches.map((m) => m.media),
 				...baseMovies.slice(10), // append rest
 			];
 
@@ -375,8 +406,9 @@ export default function MoodSurvey() {
 					<div className="mood-results-grid">
 						{resultMovies.map((m) => (
 							<MovieCard
-								key={m.id}
+								key={`${m.mediaType}-${m.id}`}
 								movie={m}
+								mediaType={m.mediaType}
 							/>
 						))}
 					</div>

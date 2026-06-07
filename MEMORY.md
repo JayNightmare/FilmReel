@@ -38,9 +38,9 @@
 - **CI/CD**: Added a GitHub Actions workflow to automatically build and deploy the React application to the `gh-pages` branch upon pushes to main/master.
 - **SEO & Social**: Improved website metadata (`index.html`) with Open Graph tags, Twitter Cards, a detailed description, and a custom SVG favicon (`film-reel.svg`).
 
-- **Version 0.0.10**: Updated Search page to simultaneously query and interleave Movies and TV Shows, complete with Film/TV badge indicators on MovieCards.
+- **Version 0.0.12**: Implemented personalized Mood Survey tracking by incorporating user watch history (80% survey, 20% history) and extending results to interleave both Movies and TV Shows.
 - **Version 0.0.11**: Added About page and navigation access points, made Home About shortcut dismissible with persistence, and added About-page feedback modal trigger.
-- **Version 0.0.9**: TV Shows integration, plus a static release notes notification system (`releaseNotes.ts` config → Navbar diff against localStorage).
+- **Version 0.0.10**: Updated Search page to simultaneously query and interleave Movies and TV Shows, complete with Film/TV badge indicators on MovieCards.
 - **Version 0.0.8**: Restructured MovieViewer details to YouTube-style layout; fixed autocomplete dropdown clipping issue caused by navbar CSS constraints.
 - **Version 0.0.7**: Comprehensive mobile layout audit and overhaul ensuring robust cross-device support; globally constrained horizontal overflow.
 - **Version 0.0.6**: Integrated multi-provider streaming support via a sleek Glassmorphic sidebar dropdown; migrated to a performant binary "Watched" status trigger.

@@ -353,6 +353,7 @@ export default function SearchResults() {
 	}, [actorNameParam]);
 
 	useEffect(() => {
+		let active = true;
 		const fetchResults = async () => {
 			if (!hasSearchCriteria) {
 				setMovies([]);
@@ -362,7 +363,6 @@ export default function SearchResults() {
 			}
 
 			setLoading(true);
-			seenIds.current.clear();
 			setPage(1);
 			setHasMore(true);
 
@@ -387,12 +387,17 @@ export default function SearchResults() {
 					}
 
 					if (!personId) {
-						setMovies([]);
-						setHasMore(false);
+						if (active) {
+							setMovies([]);
+							setHasMore(false);
+							setLoading(false);
+						}
 						return;
 					}
 
-					setResolvedActorName(actorDisplayName);
+					if (active) {
+						setResolvedActorName(actorDisplayName);
+					}
 					const [movieCredits, tvCredits] =
 						await Promise.all([
 							APIService.getMovieCreditsByPerson(
@@ -488,6 +493,9 @@ export default function SearchResults() {
 					);
 				}
 
+				if (!active) return;
+
+				seenIds.current.clear();
 				const unique = results.filter((item) => {
 					const uniqueId = `${item.media_type}-${item.id}`;
 					if (seenIds.current.has(uniqueId))
@@ -516,11 +524,15 @@ export default function SearchResults() {
 			} catch (error) {
 				console.error("Search failed:", error);
 			} finally {
-				setLoading(false);
+				if (active) setLoading(false);
 			}
 		};
 
 		fetchResults();
+
+		return () => {
+			active = false;
+		};
 	}, [
 		activeCategory,
 		query,

@@ -11,6 +11,17 @@ All notable changes to this project will be documented in this file.
 - Feature: Added Film/TV badge to `MovieCard` components.
 - Feature: Episode-level watched tracking for TV series.
 
+## [0.0.12] - 2026-06-07
+
+### Added
+
+- Feature: Personalized Mood Survey tracking incorporating user watch history (80% survey, 20% history) for highly curated recommendations.
+- Feature: Mood Survey now interleaves both Movies and TV Shows in its results grid.
+
+### Fixed
+
+- Fixed: Resolved a race condition on the Search page causing results to sporadically load empty when navigating directly to a search query.
+
 ## [0.0.11] - 2026-02-27
 
 ### Added

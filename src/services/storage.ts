@@ -25,6 +25,7 @@ export interface WatchedEpisode {
 	showTitle: string;
 	posterPath: string | null;
 	watchedAt: string; // ISO String
+	genre_ids?: number[];
 }
 
 export interface TVShowProgress {
@@ -40,6 +41,7 @@ export interface TVShowProgress {
 		watchedAt: string;
 	};
 	updatedAt: string; // ISO String
+	genre_ids?: number[];
 }
 
 const PROFILE_KEY = "filmreel_user_profile";
@@ -177,16 +179,21 @@ export const StorageService = {
 	},
 
 	// --- Watched Movies Tracking ---
-	markAsWatched: (movieId: number): void => {
+	markAsWatched: (input: number | { id: number; genre_ids?: number[] }): void => {
+		const movieId = typeof input === "number" ? input : input.id;
+		const genre_ids = typeof input === "number" ? undefined : input.genre_ids;
 		let didChange = false;
 		try {
-			const watched = getParsedArray<number>(
+			const watched = getParsedArray<any>(
 				WATCHED_MOVIES_KEY,
 			);
+			
+			const alreadyExists = watched.some(item => (typeof item === 'number' ? item : item.id) === movieId);
 
-			if (!watched.includes(movieId)) {
+			if (!alreadyExists) {
+				const newItem = { id: movieId, genre_ids, watchedAt: new Date().toISOString() };
 				// Keep the most recent 100 watched movies to prevent infinite buildup
-				const updated = [movieId, ...watched].slice(0, MAX_WATCHED_MOVIES);
+				const updated = [newItem, ...watched].slice(0, MAX_WATCHED_MOVIES);
 				localStorage.setItem(
 					WATCHED_MOVIES_KEY,
 					JSON.stringify(updated),
@@ -206,23 +213,24 @@ export const StorageService = {
 		try {
 			const data = localStorage.getItem(WATCHED_MOVIES_KEY);
 			if (!data) return false;
-			const watched: number[] = JSON.parse(data);
-			return watched.includes(movieId);
+			const watched: any[] = JSON.parse(data);
+			return watched.some(item => (typeof item === 'number' ? item : item.id) === movieId);
 		} catch {
 			return false;
 		}
 	},
 
 	getWatchedMovies: (): number[] => {
-		return getParsedArray<number>(WATCHED_MOVIES_KEY);
+		const raw = getParsedArray<any>(WATCHED_MOVIES_KEY);
+		return raw.map(item => (typeof item === 'number' ? item : item.id));
 	},
 
 	removeWatchedMovie: (movieId: number): void => {
 		try {
-			const watched = getParsedArray<number>(
+			const watched = getParsedArray<any>(
 				WATCHED_MOVIES_KEY,
 			);
-			const filtered = watched.filter((id) => id !== movieId);
+			const filtered = watched.filter((item) => (typeof item === 'number' ? item : item.id) !== movieId);
 			localStorage.setItem(
 				WATCHED_MOVIES_KEY,
 				JSON.stringify(filtered),
@@ -279,6 +287,7 @@ export const StorageService = {
 		totalEpisodes: number;
 		seasonNumber: number;
 		episodeNumber: number;
+		genre_ids?: number[];
 	}): void => {
 		const watchedAt = new Date().toISOString();
 		try {
@@ -303,6 +312,7 @@ export const StorageService = {
 				showTitle: input.showTitle,
 				posterPath: input.posterPath,
 				watchedAt,
+				genre_ids: input.genre_ids,
 			};
 
 			const updatedEpisodes = [newEpisode, ...dedupedEpisodes].slice(
@@ -335,6 +345,7 @@ export const StorageService = {
 					watchedAt,
 				},
 				updatedAt: watchedAt,
+				genre_ids: input.genre_ids,
 			};
 
 			const updatedProgress = [
@@ -368,6 +379,32 @@ export const StorageService = {
 			StorageService.dispatchStorageEvent(WATCHED_EPISODES_KEY);
 			StorageService.dispatchStorageEvent(TV_PROGRESS_KEY);
 		}
+	},
+
+	getHistoricalGenrePreferences: (): Record<number, number> => {
+		const prefs: Record<number, number> = {};
+		
+		// from movies
+		const moviesRaw = getParsedArray<any>(WATCHED_MOVIES_KEY);
+		moviesRaw.forEach(item => {
+			if (typeof item !== 'number' && item.genre_ids) {
+				item.genre_ids.forEach((gid: number) => {
+					prefs[gid] = (prefs[gid] || 0) + 1;
+				});
+			}
+		});
+
+		// from tv shows (count once per TV show)
+		const tvProgress = StorageService.getAllTVProgress();
+		tvProgress.forEach(progress => {
+			if (progress.genre_ids) {
+				progress.genre_ids.forEach((gid: number) => {
+					prefs[gid] = (prefs[gid] || 0) + 1;
+				});
+			}
+		});
+
+		return prefs;
 	},
 
 	// Helper to convert Image File -> Base64 for avatar

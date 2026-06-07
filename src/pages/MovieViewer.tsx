@@ -292,9 +292,10 @@ export default function MovieViewer() {
 				<div
 					className={`player-overlay ${playing ? "hidden" : ""}`}
 					onClick={() => {
-						StorageService.markAsWatched(
-							movie.id,
-						);
+						StorageService.markAsWatched({
+							id: movie.id,
+							genre_ids: genreIds,
+						});
 						setPlaying(true);
 					}}
 				>
