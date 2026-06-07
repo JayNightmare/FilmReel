@@ -13,6 +13,12 @@ export interface ReleaseNote {
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
 	{
+		id: "player-update-superembed",
+		title: "Important Update: Streaming Provider Change",
+		message: "We've upgraded our streaming service to SuperEmbed! Unfortunately, this means your previous watch history and progress had to be reset. We apologize for the inconvenience, but this change ensures a more stable and reliable experience.",
+		date: "2026-06-07",
+	},
+	{
 		id: "0.1.1",
 		title: "Anime Upgrade",
 		message: "Anime now has a dedicated category, and Anime movies/shows include a Dub/Sub audio toggle in the viewer when available.",

@@ -265,8 +265,45 @@ export const Navbar = () => {
 
 	const unreadCount = notifications.filter((n) => !n.read).length;
 
+	// Find specific update notification for the banner
+	const updateNotif = notifications.find(n => n.id === "player-update-superembed");
+	const showBanner = updateNotif && !updateNotif.read;
+
+	const dismissBanner = () => {
+		if (!updateNotif) return;
+		const updated = notifications.map(n => n.id === updateNotif.id ? { ...n, read: true } : n);
+		setNotifications(updated);
+		localStorage.setItem(NOTIF_KEY, JSON.stringify(updated));
+		
+		try {
+			const raw = localStorage.getItem(SEEN_KEY);
+			const seenIds = new Set<string>(raw ? JSON.parse(raw) : []);
+			seenIds.add(updateNotif.id);
+			localStorage.setItem(SEEN_KEY, JSON.stringify(Array.from(seenIds)));
+		} catch (e) {
+			console.error(e);
+		}
+	};
+
 	return (
-		<header className="navbar">
+		<>
+			{showBanner && updateNotif && (
+				<div className="update-banner">
+					<div className="container update-banner-inner">
+						<div className="update-banner-content">
+							<span className="material-symbols-outlined update-banner-icon">info</span>
+							<div>
+								<strong>{updateNotif.title}</strong>
+								<p>{updateNotif.message}</p>
+							</div>
+						</div>
+						<button onClick={dismissBanner} className="btn btn-glass update-banner-close">
+							Dismiss
+						</button>
+					</div>
+				</div>
+			)}
+			<header className="navbar">
 			<div className="container navbar-inner">
 				{/* Logo */}
 				<Link to="/" className="nav-logo-link">
@@ -849,5 +886,6 @@ export const Navbar = () => {
 				</div>
 			</div>
 		</header>
+		</>
 	);
 };
