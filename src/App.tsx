@@ -14,6 +14,7 @@ import NotFound from "./pages/NotFound";
 import { Navbar } from "./components/Navbar";
 import { Footer } from "./components/Footer";
 import { Analytics } from "@vercel/analytics/react";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { FeedbackProvider } from "./contexts/FeedbackContext";
 import { useInstallPrompt } from "./hooks/useInstallPrompt";
 
@@ -51,6 +52,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
 				/>
 			</div>
 			<Analytics />
+			<SpeedInsights />
 		</FeedbackProvider>
 	);
 };
