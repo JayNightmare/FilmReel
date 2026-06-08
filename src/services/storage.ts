@@ -18,6 +18,15 @@ export interface WatchlistItem {
 	mediaType?: "movie" | "tv";
 }
 
+export interface Playlist {
+	id: string;
+	name: string;
+	createdAt: string;
+	updatedAt: string;
+	isDefault?: boolean;
+	items: WatchlistItem[];
+}
+
 export interface WatchedEpisode {
 	tvId: number;
 	seasonNumber: number;
@@ -44,14 +53,24 @@ export interface TVShowProgress {
 	genre_ids?: number[];
 }
 
+type WatchedMovieEntry =
+	| number
+	| {
+		id: number;
+		genre_ids?: number[];
+		watchedAt?: string;
+	};
+
 const PROFILE_KEY = "filmreel_user_profile";
 const MOOD_HISTORY_KEY = "filmreel_mood_history";
 const WATCHLIST_KEY = "filmreel_watchlist";
+const PLAYLISTS_KEY = "filmreel_custom_playlists";
 const WATCHED_MOVIES_KEY = "filmreel_watched_movies";
 const WATCHED_EPISODES_KEY = "filmreel_watched_episodes";
 const TV_PROGRESS_KEY = "filmreel_tv_progress";
 const MAX_WATCHED_MOVIES = 100;
 const MAX_WATCHED_EPISODES = 1000;
+const DEFAULT_PLAYLIST_ID = "default-watchlist";
 
 const getParsedArray = <T,>(key: string): T[] => {
 	try {
@@ -63,6 +82,160 @@ const getParsedArray = <T,>(key: string): T[] => {
 		return [];
 	}
 };
+
+const dispatchStorageEvent = (key: string): void => {
+	window.dispatchEvent(
+		new CustomEvent("filmreel-storage", {
+			detail: { key },
+		}),
+	);
+};
+
+const normalizeWatchlistItem = (
+	item: Partial<WatchlistItem>,
+): WatchlistItem | null => {
+	if (
+		typeof item.id !== "number" ||
+		typeof item.title !== "string"
+	) {
+		return null;
+	}
+
+	return {
+		id: item.id,
+		title: item.title,
+		poster_path:
+			typeof item.poster_path === "string"
+				? item.poster_path
+				: null,
+		addedAt:
+			typeof item.addedAt === "string"
+				? item.addedAt
+				: new Date().toISOString(),
+		mediaType: item.mediaType === "tv" ? "tv" : "movie",
+	};
+};
+
+const createDefaultPlaylist = (
+	items: WatchlistItem[] = [],
+): Playlist => {
+	const now = new Date().toISOString();
+	return {
+		id: DEFAULT_PLAYLIST_ID,
+		name: "Watchlist",
+		createdAt: now,
+		updatedAt: now,
+		isDefault: true,
+		items,
+	};
+};
+
+const normalizePlaylist = (
+	playlist: Partial<Playlist>,
+): Playlist | null => {
+	if (
+		typeof playlist.id !== "string" ||
+		typeof playlist.name !== "string"
+	) {
+		return null;
+	}
+
+	const normalizedItems = Array.isArray(playlist.items)
+		? playlist.items
+			.map((item) => normalizeWatchlistItem(item))
+			.filter(
+				(item): item is WatchlistItem => item !== null,
+			)
+		: [];
+
+	return {
+		id: playlist.id,
+		name: playlist.name.trim() || "Untitled Playlist",
+		createdAt:
+			typeof playlist.createdAt === "string"
+				? playlist.createdAt
+				: new Date().toISOString(),
+		updatedAt:
+			typeof playlist.updatedAt === "string"
+				? playlist.updatedAt
+				: new Date().toISOString(),
+		isDefault: Boolean(playlist.isDefault),
+		items: normalizedItems,
+	};
+};
+
+const getDefaultPlaylistFromList = (
+	playlists: Playlist[],
+): Playlist => {
+	return (
+		playlists.find(
+			(playlist) => playlist.id === DEFAULT_PLAYLIST_ID,
+		) ?? createDefaultPlaylist()
+	);
+};
+
+const persistPlaylists = (playlists: Playlist[]): void => {
+	const defaultPlaylist = getDefaultPlaylistFromList(playlists);
+	localStorage.setItem(PLAYLISTS_KEY, JSON.stringify(playlists));
+	localStorage.setItem(
+		WATCHLIST_KEY,
+		JSON.stringify(defaultPlaylist.items),
+	);
+	dispatchStorageEvent(PLAYLISTS_KEY);
+	dispatchStorageEvent(WATCHLIST_KEY);
+};
+
+const getStoredPlaylists = (): Playlist[] => {
+	const parsedPlaylists = getParsedArray<Partial<Playlist>>(
+		PLAYLISTS_KEY,
+	)
+		.map((playlist) => normalizePlaylist(playlist))
+		.filter((playlist): playlist is Playlist => playlist !== null);
+
+	if (parsedPlaylists.length > 0) {
+		if (
+			parsedPlaylists.some(
+				(playlist) => playlist.id === DEFAULT_PLAYLIST_ID,
+			)
+		) {
+			return parsedPlaylists;
+		}
+
+		return [
+			createDefaultPlaylist(
+				getParsedArray<Partial<WatchlistItem>>(
+					WATCHLIST_KEY,
+				)
+					.map((item) => normalizeWatchlistItem(item))
+					.filter(
+						(item): item is WatchlistItem => item !== null,
+					),
+			),
+			...parsedPlaylists,
+		];
+	}
+
+	const legacyWatchlist = getParsedArray<Partial<WatchlistItem>>(
+		WATCHLIST_KEY,
+	)
+		.map((item) => normalizeWatchlistItem(item))
+		.filter((item): item is WatchlistItem => item !== null);
+
+	const playlists = [createDefaultPlaylist(legacyWatchlist)];
+	persistPlaylists(playlists);
+	return playlists;
+};
+
+const buildPlaylistItem = (movie: {
+	id: number;
+	title: string;
+	poster_path: string | null;
+	mediaType?: "movie" | "tv";
+}): WatchlistItem => ({
+	...movie,
+	addedAt: new Date().toISOString(),
+	mediaType: movie.mediaType ?? "movie",
+});
 
 // Default Profile
 const defaultProfile: UserProfile = {
@@ -114,7 +287,7 @@ export const StorageService = {
 
 	saveProfile: (profile: UserProfile): void => {
 		localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
-		StorageService.dispatchStorageEvent(PROFILE_KEY);
+		dispatchStorageEvent(PROFILE_KEY);
 	},
 
 	// --- Mood History Management ---
@@ -135,13 +308,177 @@ export const StorageService = {
 	},
 
 	// --- Watchlist Management ---
+	getPlaylists: (): Playlist[] => {
+		return getStoredPlaylists().sort((a, b) => {
+			if (a.id === DEFAULT_PLAYLIST_ID) return -1;
+			if (b.id === DEFAULT_PLAYLIST_ID) return 1;
+			return b.updatedAt.localeCompare(a.updatedAt);
+		});
+	},
+
+	getPlaylist: (playlistId: string): Playlist | null => {
+		return (
+			StorageService.getPlaylists().find(
+				(playlist) => playlist.id === playlistId,
+			) ?? null
+		);
+	},
+
+	getDefaultPlaylist: (): Playlist => {
+		return getDefaultPlaylistFromList(
+			StorageService.getPlaylists(),
+		);
+	},
+
 	getWatchlist: (): WatchlistItem[] => {
-		try {
-			const data = localStorage.getItem(WATCHLIST_KEY);
-			return data ? JSON.parse(data) : [];
-		} catch {
-			return [];
+		return StorageService.getDefaultPlaylist().items;
+	},
+
+	createPlaylist: (name: string): Playlist => {
+		const trimmedName = name.trim();
+		if (!trimmedName) {
+			throw new Error("Playlist name is required.");
 		}
+
+		const now = new Date().toISOString();
+		const playlists = StorageService.getPlaylists();
+		const playlist: Playlist = {
+			id: `playlist-${crypto.randomUUID()}`,
+			name: trimmedName,
+			createdAt: now,
+			updatedAt: now,
+			items: [],
+		};
+
+		persistPlaylists([playlist, ...playlists]);
+		return playlist;
+	},
+
+	updatePlaylist: (
+		playlistId: string,
+		updates: { name?: string },
+	): Playlist | null => {
+		const playlists = StorageService.getPlaylists();
+		let updatedPlaylist: Playlist | null = null;
+
+		const updatedPlaylists = playlists.map((playlist) => {
+			if (playlist.id !== playlistId) return playlist;
+
+			updatedPlaylist = {
+				...playlist,
+				name:
+					typeof updates.name === "string" &&
+						updates.name.trim().length > 0
+						? updates.name.trim()
+						: playlist.name,
+				updatedAt: new Date().toISOString(),
+			};
+
+			return updatedPlaylist;
+		});
+
+		if (!updatedPlaylist) {
+			return null;
+		}
+
+		persistPlaylists(updatedPlaylists);
+		return updatedPlaylist;
+	},
+
+	deletePlaylist: (playlistId: string): boolean => {
+		if (playlistId === DEFAULT_PLAYLIST_ID) {
+			return false;
+		}
+
+		const playlists = StorageService.getPlaylists();
+		const updatedPlaylists = playlists.filter(
+			(playlist) => playlist.id !== playlistId,
+		);
+
+		if (updatedPlaylists.length === playlists.length) {
+			return false;
+		}
+
+		persistPlaylists(updatedPlaylists);
+		return true;
+	},
+
+	addToPlaylist: (
+		playlistId: string,
+		movie: {
+			id: number;
+			title: string;
+			poster_path: string | null;
+			mediaType?: "movie" | "tv";
+		},
+	): boolean => {
+		const playlists = StorageService.getPlaylists();
+		let didAdd = false;
+
+		const updatedPlaylists = playlists.map((playlist) => {
+			if (playlist.id !== playlistId) return playlist;
+			if (playlist.items.some((item) => item.id === movie.id)) {
+				return playlist;
+			}
+
+			didAdd = true;
+			return {
+				...playlist,
+				updatedAt: new Date().toISOString(),
+				items: [buildPlaylistItem(movie), ...playlist.items],
+			};
+		});
+
+		if (!didAdd) {
+			return false;
+		}
+
+		persistPlaylists(updatedPlaylists);
+		return true;
+	},
+
+	removeFromPlaylist: (
+		playlistId: string,
+		movieId: number,
+	): boolean => {
+		const playlists = StorageService.getPlaylists();
+		let didRemove = false;
+
+		const updatedPlaylists = playlists.map((playlist) => {
+			if (playlist.id !== playlistId) return playlist;
+			const items = playlist.items.filter(
+				(item) => item.id !== movieId,
+			);
+
+			if (items.length === playlist.items.length) {
+				return playlist;
+			}
+
+			didRemove = true;
+			return {
+				...playlist,
+				updatedAt: new Date().toISOString(),
+				items,
+			};
+		});
+
+		if (!didRemove) {
+			return false;
+		}
+
+		persistPlaylists(updatedPlaylists);
+		return true;
+	},
+
+	getPlaylistsContainingItem: (movieId: number): Playlist[] => {
+		return StorageService.getPlaylists().filter((playlist) =>
+			playlist.items.some((item) => item.id === movieId),
+		);
+	},
+
+	isInAnyPlaylist: (movieId: number): boolean => {
+		return StorageService.getPlaylistsContainingItem(movieId)
+			.length > 0;
 	},
 
 	addToWatchlist: (movie: {
@@ -150,30 +487,18 @@ export const StorageService = {
 		poster_path: string | null;
 		mediaType?: "movie" | "tv";
 	}): void => {
-		const list = StorageService.getWatchlist();
-		if (list.some((item) => item.id === movie.id)) return;
-		const item: WatchlistItem = {
-			...movie,
-			addedAt: new Date().toISOString(),
-			mediaType: movie.mediaType ?? "movie",
-		};
-		localStorage.setItem(
-			WATCHLIST_KEY,
-			JSON.stringify([item, ...list]),
-		);
-		StorageService.dispatchStorageEvent(WATCHLIST_KEY);
+		StorageService.addToPlaylist(DEFAULT_PLAYLIST_ID, movie);
 	},
 
 	removeFromWatchlist: (movieId: number): void => {
-		const list = StorageService.getWatchlist().filter(
-			(item) => item.id !== movieId,
+		StorageService.removeFromPlaylist(
+			DEFAULT_PLAYLIST_ID,
+			movieId,
 		);
-		localStorage.setItem(WATCHLIST_KEY, JSON.stringify(list));
-		StorageService.dispatchStorageEvent(WATCHLIST_KEY);
 	},
 
 	isInWatchlist: (movieId: number): boolean => {
-		return StorageService.getWatchlist().some(
+		return StorageService.getDefaultPlaylist().items.some(
 			(item) => item.id === movieId,
 		);
 	},
@@ -184,11 +509,14 @@ export const StorageService = {
 		const genre_ids = typeof input === "number" ? undefined : input.genre_ids;
 		let didChange = false;
 		try {
-			const watched = getParsedArray<any>(
+			const watched = getParsedArray<WatchedMovieEntry>(
 				WATCHED_MOVIES_KEY,
 			);
-			
-			const alreadyExists = watched.some(item => (typeof item === 'number' ? item : item.id) === movieId);
+
+			const alreadyExists = watched.some(
+				(item) =>
+					(typeof item === "number" ? item : item.id) === movieId,
+			);
 
 			if (!alreadyExists) {
 				const newItem = { id: movieId, genre_ids, watchedAt: new Date().toISOString() };
@@ -204,7 +532,7 @@ export const StorageService = {
 			console.warn("Failed to mark movie as watched:", err);
 		} finally {
 			if (didChange) {
-				StorageService.dispatchStorageEvent(WATCHED_MOVIES_KEY);
+				dispatchStorageEvent(WATCHED_MOVIES_KEY);
 			}
 		}
 	},
@@ -213,29 +541,37 @@ export const StorageService = {
 		try {
 			const data = localStorage.getItem(WATCHED_MOVIES_KEY);
 			if (!data) return false;
-			const watched: any[] = JSON.parse(data);
-			return watched.some(item => (typeof item === 'number' ? item : item.id) === movieId);
+			const watched = JSON.parse(data) as WatchedMovieEntry[];
+			return watched.some(
+				(item) =>
+					(typeof item === "number" ? item : item.id) === movieId,
+			);
 		} catch {
 			return false;
 		}
 	},
 
 	getWatchedMovies: (): number[] => {
-		const raw = getParsedArray<any>(WATCHED_MOVIES_KEY);
-		return raw.map(item => (typeof item === 'number' ? item : item.id));
+		const raw = getParsedArray<WatchedMovieEntry>(WATCHED_MOVIES_KEY);
+		return raw.map((item) =>
+			typeof item === "number" ? item : item.id,
+		);
 	},
 
 	removeWatchedMovie: (movieId: number): void => {
 		try {
-			const watched = getParsedArray<any>(
+			const watched = getParsedArray<WatchedMovieEntry>(
 				WATCHED_MOVIES_KEY,
 			);
-			const filtered = watched.filter((item) => (typeof item === 'number' ? item : item.id) !== movieId);
+			const filtered = watched.filter(
+				(item) =>
+					(typeof item === "number" ? item : item.id) !== movieId,
+			);
 			localStorage.setItem(
 				WATCHED_MOVIES_KEY,
 				JSON.stringify(filtered),
 			);
-			StorageService.dispatchStorageEvent(WATCHED_MOVIES_KEY);
+			dispatchStorageEvent(WATCHED_MOVIES_KEY);
 		} catch {
 			/* silently fail */
 		}
@@ -360,10 +696,8 @@ export const StorageService = {
 				JSON.stringify(updatedProgress),
 			);
 
-			StorageService.dispatchStorageEvent(
-				WATCHED_EPISODES_KEY,
-			);
-			StorageService.dispatchStorageEvent(TV_PROGRESS_KEY);
+			dispatchStorageEvent(WATCHED_EPISODES_KEY);
+			dispatchStorageEvent(TV_PROGRESS_KEY);
 		} catch (err) {
 			console.warn("Failed to mark episode as watched:", err);
 		}
@@ -375,19 +709,19 @@ export const StorageService = {
 			localStorage.removeItem(WATCHED_EPISODES_KEY);
 			localStorage.removeItem(TV_PROGRESS_KEY);
 		} finally {
-			StorageService.dispatchStorageEvent(WATCHED_MOVIES_KEY);
-			StorageService.dispatchStorageEvent(WATCHED_EPISODES_KEY);
-			StorageService.dispatchStorageEvent(TV_PROGRESS_KEY);
+			dispatchStorageEvent(WATCHED_MOVIES_KEY);
+			dispatchStorageEvent(WATCHED_EPISODES_KEY);
+			dispatchStorageEvent(TV_PROGRESS_KEY);
 		}
 	},
 
 	getHistoricalGenrePreferences: (): Record<number, number> => {
 		const prefs: Record<number, number> = {};
-		
+
 		// from movies
-		const moviesRaw = getParsedArray<any>(WATCHED_MOVIES_KEY);
-		moviesRaw.forEach(item => {
-			if (typeof item !== 'number' && item.genre_ids) {
+		const moviesRaw = getParsedArray<WatchedMovieEntry>(WATCHED_MOVIES_KEY);
+		moviesRaw.forEach((item) => {
+			if (typeof item !== "number" && item.genre_ids) {
 				item.genre_ids.forEach((gid: number) => {
 					prefs[gid] = (prefs[gid] || 0) + 1;
 				});
@@ -418,10 +752,6 @@ export const StorageService = {
 	},
 
 	dispatchStorageEvent: (key: string): void => {
-		window.dispatchEvent(
-			new CustomEvent("filmreel-storage", {
-				detail: { key },
-			}),
-		);
+		dispatchStorageEvent(key);
 	},
 };

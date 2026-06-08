@@ -504,6 +504,13 @@ export default function SearchResults() {
 					return true;
 				});
 
+				console.log("ACTOR SEARCH DEBUG:", {
+					activeCategory,
+					personId: activeCategory === "actor" ? Number(withPeopleParam) : null,
+					resultsLength: results.length,
+					uniqueLength: unique.length
+				});
+
 				if (activeCategory === "actor") {
 					actorResultsRef.current = unique;
 					const firstPage = paginateResults(

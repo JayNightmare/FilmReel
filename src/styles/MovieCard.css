@@ -79,7 +79,8 @@
     margin: 4px 0 0 0;
 }
 
-.movie-bookmark {
+.movie-bookmark,
+.movie-playlist-add {
     position: relative;
     z-index: 15;
     background: rgba(0, 0, 0, 0.6);
@@ -98,18 +99,24 @@
     transition: all 0.25s ease;
 }
 
-.movie-bookmark .material-symbols-outlined {
+.movie-bookmark .material-symbols-outlined,
+.movie-playlist-add .material-symbols-outlined {
     font-size: 20px;
     color: white;
 }
 
-.movie-card:hover .movie-bookmark {
+.movie-card:hover .movie-bookmark,
+.movie-card:hover .movie-playlist-add {
     opacity: 1;
     transform: scale(1);
 }
 
 .movie-bookmark:hover {
     background: rgba(127, 19, 236, 0.7);
+}
+
+.movie-playlist-add:hover {
+    background: rgba(16, 185, 129, 0.7);
 }
 
 .movie-bookmark.active {
@@ -177,6 +184,7 @@
     right: 8px;
     z-index: 15;
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     gap: 8px;
+    align-items: center;
 }

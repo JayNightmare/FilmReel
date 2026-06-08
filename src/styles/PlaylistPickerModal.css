@@ -1,0 +1,257 @@
+.playlist-modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: rgba(5, 6, 10, 0.78);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+}
+
+.playlist-modal {
+    width: min(100%, 520px);
+    border-radius: 24px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background:
+        radial-gradient(circle at top, rgba(127, 19, 236, 0.18), transparent 42%),
+        rgba(15, 15, 24, 0.96);
+    box-shadow:
+        0 30px 80px rgba(0, 0, 0, 0.55),
+        0 0 0 1px rgba(255, 255, 255, 0.03);
+    overflow: hidden;
+    animation: playlist-modal-rise 0.22s ease;
+}
+
+.playlist-modal--create {
+    width: min(100%, 460px);
+}
+
+.playlist-modal-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 24px 24px 18px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.playlist-modal-header h2 {
+    margin: 4px 0 0;
+    font-size: 1.2rem;
+    line-height: 1.3;
+    color: white;
+}
+
+.playlist-modal-kicker {
+    margin: 0;
+    font-size: 0.78rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.52);
+}
+
+.playlist-modal-close {
+    width: 40px;
+    height: 40px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.06);
+    color: rgba(255, 255, 255, 0.74);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s ease, color 0.2s ease;
+}
+
+.playlist-modal-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.playlist-modal-close:hover {
+    background: rgba(255, 255, 255, 0.12);
+    color: white;
+}
+
+.playlist-modal-body {
+    display: grid;
+    gap: 16px;
+    padding: 20px 24px 24px;
+}
+
+.playlist-modal-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    max-height: 320px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+.playlist-modal-item {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    width: auto;
+    min-height: 46px;
+    padding: 10px 14px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.04);
+    color: white;
+    cursor: pointer;
+    transition:
+        transform 0.2s ease,
+        border-color 0.2s ease,
+        background 0.2s ease;
+}
+
+.playlist-modal-item:hover {
+    transform: translateY(-1px);
+    border-color: rgba(127, 19, 236, 0.4);
+    background: rgba(127, 19, 236, 0.12);
+}
+
+.playlist-modal-item.active {
+    border-color: rgba(127, 19, 236, 0.45);
+    background: rgba(127, 19, 236, 0.18);
+}
+
+.playlist-modal-item-name {
+    font-size: 0.95rem;
+    font-weight: 700;
+}
+
+.playlist-modal-item-icon-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.playlist-modal-item-icon {
+    color: #b388ff;
+    font-size: 1.2rem;
+    flex-shrink: 0;
+}
+
+.playlist-modal-item-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.72);
+    font-size: 0.72rem;
+    font-weight: 700;
+}
+
+.playlist-modal-create-box {
+    display: grid;
+    gap: 10px;
+}
+
+.playlist-modal-empty {
+    margin: 0;
+    color: rgba(255, 255, 255, 0.66);
+    line-height: 1.6;
+}
+
+.playlist-modal-label {
+    font-size: 0.84rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.72);
+}
+
+.playlist-modal-create-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px;
+}
+
+.playlist-modal-input {
+    width: 100%;
+    padding: 12px 14px;
+    border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.04);
+    color: white;
+    font: inherit;
+}
+
+.playlist-modal-input:focus {
+    outline: none;
+    border-color: rgba(127, 19, 236, 0.55);
+    box-shadow: 0 0 0 3px rgba(127, 19, 236, 0.15);
+}
+
+.playlist-modal-create-button:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.playlist-modal-back {
+    justify-self: flex-start;
+    padding: 0;
+    border: none;
+    background: none;
+    color: rgba(255, 255, 255, 0.68);
+    cursor: pointer;
+    font: inherit;
+}
+
+.playlist-modal-back:hover {
+    color: white;
+}
+
+.playlist-modal-error {
+    margin: 0;
+    font-size: 0.85rem;
+    color: #fda4af;
+}
+
+@media (max-width: 640px) {
+    .playlist-modal-overlay {
+        padding: 12px;
+        align-items: flex-end;
+    }
+
+    .playlist-modal {
+        width: 100%;
+        border-radius: 22px 22px 0 0;
+    }
+
+    .playlist-modal-header,
+    .playlist-modal-body {
+        padding-left: 16px;
+        padding-right: 16px;
+    }
+
+    .playlist-modal-create-row {
+        grid-template-columns: 1fr;
+    }
+
+    .playlist-modal-create-button {
+        width: 100%;
+    }
+}
+
+@keyframes playlist-modal-rise {
+    from {
+        opacity: 0;
+        transform: translateY(18px) scale(0.98);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}

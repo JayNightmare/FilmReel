@@ -123,6 +123,112 @@
     width: 100%;
 }
 
+.account-playlist-shell {
+    padding: 22px;
+    display: grid;
+    gap: 20px;
+}
+
+.account-playlist-toolbar {
+    display: grid;
+    gap: 18px;
+}
+
+.account-playlist-create {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 12px;
+}
+
+.account-playlist-input {
+    min-width: 0;
+}
+
+.account-playlist-tabs {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+}
+
+.account-playlist-tab {
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.04);
+    color: white;
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition:
+        background 0.2s ease,
+        border-color 0.2s ease,
+        transform 0.2s ease;
+}
+
+.account-playlist-tab strong {
+    font-size: 0.8rem;
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.78);
+}
+
+.account-playlist-tab:hover,
+.account-playlist-tab.active {
+    border-color: rgba(127, 19, 236, 0.4);
+    background: rgba(127, 19, 236, 0.16);
+    transform: translateY(-1px);
+}
+
+.account-playlist-editor {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 18px;
+    padding: 16px 18px;
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.account-playlist-label {
+    margin: 0 0 4px;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-secondary);
+}
+
+.account-playlist-title {
+    margin: 0;
+    font-size: 1.15rem;
+    font-weight: 700;
+}
+
+.account-playlist-note {
+    margin: 0;
+    max-width: 380px;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    color: var(--text-secondary);
+}
+
+.account-playlist-editor-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    gap: 10px;
+    align-items: center;
+    min-width: min(100%, 460px);
+}
+
+.account-playlist-delete {
+    border-color: rgba(248, 113, 113, 0.28);
+    color: #fecaca;
+}
+
 .account-watch-history {
     width: 100%;
 }
@@ -187,6 +293,18 @@
     display: block;
     margin-bottom: 12px;
     color: rgba(127, 19, 236, 0.4);
+}
+
+@media (max-width: 768px) {
+
+    .account-playlist-create,
+    .account-playlist-editor-row {
+        grid-template-columns: 1fr;
+    }
+
+    .account-playlist-editor {
+        flex-direction: column;
+    }
 }
 
 /* --- Toast --- */

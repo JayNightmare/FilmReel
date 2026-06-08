@@ -1,9 +1,11 @@
 import { useState, useEffect, useRef } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useSearchParams } from "react-router-dom";
 import { APIService } from "../services/api";
 import type { TVShow, Season, Episode, CastMember } from "../services/api";
 import { StorageService } from "../services/storage";
+import { useStorageSync } from "../hooks/useStorageSync";
 import { MovieCard } from "../components/MovieCard";
+import { PlaylistPickerModal } from "../components/PlaylistPickerModal";
 import { useFeedback } from "../contexts/FeedbackContext";
 import "../styles/TVViewer.css";
 
@@ -12,12 +14,19 @@ type AudioTrack = "dub" | "sub";
 
 const FALLBACK_POSTER =
 	"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 500 750' fill='none'%3E%3Crect width='500' height='750' fill='%231a1122'/%3E%3Ctext x='250' y='340' text-anchor='middle' fill='%237f13ec' font-family='system-ui' font-size='40' font-weight='bold'%3EFilmReel%3C/text%3E%3Ctext x='250' y='400' text-anchor='middle' fill='%23666' font-family='system-ui' font-size='20'%3ENo Poster%3C/text%3E%3C/svg%3E";
+const PLAYLISTS_KEY = "filmreel_custom_playlists";
 
 const TVViewer = () => {
 	const { id } = useParams<{ id: string }>();
+	const [searchParams] = useSearchParams();
+	const autoSeason = searchParams.get("season");
+	const autoEpisode = searchParams.get("episode");
+
 	const [show, setShow] = useState<TVShow | null>(null);
 	const [season, setSeason] = useState<Season | null>(null);
-	const [selectedSeason, setSelectedSeason] = useState(1);
+	const [selectedSeason, setSelectedSeason] = useState(
+		autoSeason ? Number(autoSeason) : 1,
+	);
 	const [selectedEpisode, setSelectedEpisode] = useState<Episode | null>(
 		null,
 	);
@@ -26,11 +35,15 @@ const TVViewer = () => {
 	const [audioTrack, setAudioTrack] = useState<AudioTrack>("dub");
 	const [cast, setCast] = useState<CastMember[]>([]);
 	const [similar, setSimilar] = useState<TVShow[]>([]);
-	const [inWatchlist, setInWatchlist] = useState(false);
+	const [showPlaylistPicker, setShowPlaylistPicker] = useState(false);
 	const { openFeedback } = useFeedback();
 	const [iframeKey, setIframeKey] = useState(0);
 	const [loading, setLoading] = useState(true);
 	const iframeContainerRef = useRef<HTMLDivElement>(null);
+	const playlists = useStorageSync(
+		PLAYLISTS_KEY,
+		StorageService.getPlaylists,
+	);
 
 	useEffect(() => {
 		if (!id) return;
@@ -48,9 +61,6 @@ const TVViewer = () => {
 				setShow(details);
 				setCast(credits.slice(0, 10));
 				setSimilar(similarShows.slice(0, 12));
-				setInWatchlist(
-					StorageService.isInWatchlist(tvId),
-				);
 
 				// Find the first valid season (skip "Specials" season 0)
 				const firstSeason = details.seasons?.find(
@@ -81,8 +91,29 @@ const TVViewer = () => {
 					selectedSeason,
 				);
 				setSeason(data);
-				// Auto-select first episode
+				// Auto-select episode
 				if (data.episodes && data.episodes.length > 0) {
+					if (
+						autoEpisode &&
+						selectedSeason ===
+							Number(autoSeason)
+					) {
+						const targetEp =
+							data.episodes.find(
+								(e) =>
+									e.episode_number ===
+									Number(
+										autoEpisode,
+									),
+							);
+						if (targetEp) {
+							setSelectedEpisode(
+								targetEp,
+							);
+							setPlaying(true);
+							return;
+						}
+					}
 					setSelectedEpisode(data.episodes[0]);
 				}
 			} catch (err) {
@@ -90,24 +121,13 @@ const TVViewer = () => {
 			}
 		};
 		fetchSeason();
-	}, [id, selectedSeason]);
+	}, [id, selectedSeason, autoEpisode, autoSeason]);
 
 	const refreshIframe = () => setIframeKey((k) => k + 1);
 
 	const toggleWatchlist = () => {
 		if (!show) return;
-		if (inWatchlist) {
-			StorageService.removeFromWatchlist(show.id);
-			setInWatchlist(false);
-		} else {
-			StorageService.addToWatchlist({
-				id: show.id,
-				title: show.name,
-				poster_path: show.poster_path,
-				mediaType: "tv",
-			});
-			setInWatchlist(true);
-		}
+		setShowPlaylistPicker(true);
 	};
 
 	const genreIds = [
@@ -197,6 +217,9 @@ const TVViewer = () => {
 
 	const validSeasons =
 		show.seasons?.filter((s) => s.season_number > 0) ?? [];
+	const inWatchlist = playlists.some((playlist) =>
+		playlist.items.some((item) => item.id === show.id),
+	);
 
 	return (
 		<div className="tv-viewer">
@@ -300,8 +323,8 @@ const TVViewer = () => {
 								}
 								title={
 									inWatchlist
-										? "In Watchlist"
-										: "Add to Watchlist"
+										? "Saved to Playlists"
+										: "Save to Playlists"
 								}
 							>
 								<span className="material-symbols-outlined">
@@ -311,7 +334,7 @@ const TVViewer = () => {
 								</span>
 								{inWatchlist
 									? "Saved"
-									: "Watchlist"}
+									: "Playlists"}
 							</button>
 						</div>
 
@@ -601,8 +624,8 @@ const TVViewer = () => {
 									: "bookmark_add"}
 							</span>
 							{inWatchlist
-								? "In Watchlist"
-								: "Add to Watchlist"}
+								? "Saved to Playlists"
+								: "Save to Playlists"}
 						</button>
 
 						<div className="tv-meta-list">
@@ -748,6 +771,17 @@ const TVViewer = () => {
 					</div>
 				</div>
 			</div>
+
+			<PlaylistPickerModal
+				isOpen={showPlaylistPicker}
+				onClose={() => setShowPlaylistPicker(false)}
+				item={{
+					id: show.id,
+					title: show.name,
+					poster_path: show.poster_path,
+					mediaType: "tv",
+				}}
+			/>
 		</div>
 	);
 };

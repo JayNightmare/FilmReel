@@ -6,16 +6,17 @@ import { StorageService } from "../services/storage";
 import type {
 	UserProfile,
 	MoodResult,
-	WatchlistItem,
+	Playlist,
 	TVShowProgress,
 } from "../services/storage";
 import { useStorageSync } from "../hooks/useStorageSync";
 import { MovieCard } from "../components/MovieCard";
 import "../styles/Account.css";
 
-const WATCHLIST_KEY = "filmreel_watchlist";
+const PLAYLISTS_KEY = "filmreel_custom_playlists";
 const WATCHED_MOVIES_KEY = "filmreel_watched_movies";
 const TV_PROGRESS_KEY = "filmreel_tv_progress";
+const DEFAULT_PLAYLIST_ID = "default-watchlist";
 
 const FALLBACK_POSTER =
 	"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 500 750' fill='none'%3E%3Crect width='500' height='750' fill='%231a1122'/%3E%3Ctext x='250' y='340' text-anchor='middle' fill='%237f13ec' font-family='system-ui' font-size='40' font-weight='bold'%3EFilmReel%3C/text%3E%3Ctext x='250' y='400' text-anchor='middle' fill='%23666' font-family='system-ui' font-size='20'%3ENo Poster%3C/text%3E%3C/svg%3E";
@@ -27,9 +28,9 @@ export default function Account() {
 	const [history] = useState<MoodResult[]>(() =>
 		StorageService.getMoodHistory(),
 	);
-	const watchlist = useStorageSync<WatchlistItem[]>(
-		WATCHLIST_KEY,
-		StorageService.getWatchlist,
+	const playlists = useStorageSync<Playlist[]>(
+		PLAYLISTS_KEY,
+		StorageService.getPlaylists,
 	);
 	const watchedMovieIds = useStorageSync<number[]>(
 		WATCHED_MOVIES_KEY,
@@ -43,6 +44,10 @@ export default function Account() {
 	const [isHistoryLoading, setIsHistoryLoading] = useState(false);
 	const [isSaving, setIsSaving] = useState(false);
 	const [toast, setToast] = useState<string | null>(null);
+	const [selectedPlaylistId, setSelectedPlaylistId] =
+		useState(DEFAULT_PLAYLIST_ID);
+	const [newPlaylistName, setNewPlaylistName] = useState("");
+	const [playlistNameDraft, setPlaylistNameDraft] = useState("");
 
 	const showToast = useCallback((message: string) => {
 		setToast(message);
@@ -64,17 +69,31 @@ export default function Account() {
 			number_of_episodes: progress.totalEpisodes,
 		}));
 
+	const activePlaylist =
+		playlists.find(
+			(playlist) => playlist.id === selectedPlaylistId,
+		) ??
+		playlists[0] ??
+		null;
+	const visibleWatchedMovies =
+		watchedMovieIds.length === 0 ? [] : watchedMovies;
+	const isHistoryEmpty =
+		!isHistoryLoading &&
+		visibleWatchedMovies.length === 0 &&
+		watchedTVCards.length === 0;
+
 	useEffect(() => {
 		if (watchedMovieIds.length === 0) {
-			setWatchedMovies([]);
-			setIsHistoryLoading(false);
 			return;
 		}
 
 		let cancelled = false;
-		setIsHistoryLoading(true);
 
 		const loadWatchedMovies = async () => {
+			if (!cancelled) {
+				setIsHistoryLoading(true);
+			}
+
 			const settled = await Promise.allSettled(
 				watchedMovieIds
 					.slice(0, 30)
@@ -165,9 +184,82 @@ export default function Account() {
 		}, 400);
 	};
 
-	const removeFromWatchlist = (movieId: number) => {
-		StorageService.removeFromWatchlist(movieId);
-		showToast("Removed from watchlist");
+	const createPlaylist = () => {
+		if (!newPlaylistName.trim()) {
+			showToast("Enter a playlist name");
+			return;
+		}
+
+		try {
+			const playlist =
+				StorageService.createPlaylist(newPlaylistName);
+			setNewPlaylistName("");
+			setSelectedPlaylistId(playlist.id);
+			setPlaylistNameDraft(playlist.name);
+			showToast(`Created ${playlist.name}`);
+		} catch (error) {
+			showToast(
+				error instanceof Error
+					? error.message
+					: "Unable to create playlist",
+			);
+		}
+	};
+
+	const renamePlaylist = () => {
+		if (
+			!activePlaylist ||
+			activePlaylist.id === DEFAULT_PLAYLIST_ID
+		) {
+			return;
+		}
+
+		const updatedPlaylist = StorageService.updatePlaylist(
+			activePlaylist.id,
+			{
+				name: playlistNameDraft,
+			},
+		);
+
+		if (!updatedPlaylist) {
+			showToast("Unable to rename playlist");
+			return;
+		}
+
+		setPlaylistNameDraft(updatedPlaylist.name);
+		showToast(`Renamed to ${updatedPlaylist.name}`);
+	};
+
+	const deletePlaylist = () => {
+		if (
+			!activePlaylist ||
+			activePlaylist.id === DEFAULT_PLAYLIST_ID
+		) {
+			return;
+		}
+
+		const confirmed = window.confirm(
+			`Delete ${activePlaylist.name}? This only removes the playlist, not the titles from other playlists.`,
+		);
+		if (!confirmed) return;
+
+		const didDelete = StorageService.deletePlaylist(
+			activePlaylist.id,
+		);
+		if (!didDelete) {
+			showToast("Unable to delete playlist");
+			return;
+		}
+
+		setSelectedPlaylistId(DEFAULT_PLAYLIST_ID);
+		setPlaylistNameDraft("");
+		showToast(`Deleted ${activePlaylist.name}`);
+	};
+
+	const removeFromPlaylist = (movieId: number) => {
+		if (!activePlaylist) return;
+		StorageService.removeFromPlaylist(activePlaylist.id, movieId);
+		showToast(`Removed from ${activePlaylist.name}`);
 	};
 
 	const resetWatchedHistory = () => {
@@ -440,7 +532,7 @@ export default function Account() {
 				</div>
 			</div>
 
-			{/* Watchlist Section */}
+			{/* Playlists Section */}
 			<div className="account-watchlist">
 				<div className="account-watchlist-header">
 					<h2 className="account-sidebar-title">
@@ -452,105 +544,251 @@ export default function Account() {
 						>
 							bookmark
 						</span>
-						My Watchlist
+						Playlists
 					</h2>
-					{watchlist.length > 0 && (
+					{playlists.length > 0 && (
 						<span
 							style={{
 								color: "var(--text-secondary)",
 								fontSize: "0.9rem",
 							}}
 						>
-							{watchlist.length}{" "}
-							{watchlist.length === 1
-								? "title"
-								: "titles"}
+							{playlists.length}{" "}
+							{playlists.length === 1
+								? "playlist"
+								: "playlists"}
 						</span>
 					)}
 				</div>
 
-				{watchlist.length === 0 ? (
-					<div className="glass-panel account-watchlist-empty">
-						<span className="material-symbols-outlined">
-							bookmark_border
-						</span>
-						Your watchlist is empty. Browse
-						movies and tap the bookmark icon
-						to save them here!
-					</div>
-				) : (
-					<div className="account-watchlist-grid">
-						{watchlist.map((item) => (
-							<div
-								key={item.id}
-								className="movie-card group"
-								style={{
-									width: "100%",
-								}}
+				<div className="glass-panel account-playlist-shell">
+					<div className="account-playlist-toolbar">
+						<div className="account-playlist-create">
+							<input
+								type="text"
+								value={
+									newPlaylistName
+								}
+								onChange={(e) =>
+									setNewPlaylistName(
+										e
+											.target
+											.value,
+									)
+								}
+								className="input-glass account-playlist-input"
+								placeholder="Create a new playlist"
+								maxLength={40}
+							/>
+							<button
+								type="button"
+								onClick={
+									createPlaylist
+								}
+								className="btn btn-primary"
 							>
-								<Link
-									to={
-										item.mediaType ===
-										"tv"
-											? `/tv/${item.id}`
-											: `/movie/${item.id}`
-									}
-									style={{
-										textDecoration:
-											"none",
-									}}
-								>
-									<div className="movie-card-inner">
-										<img
-											src={
-												item.poster_path
-													? `https://image.tmdb.org/t/p/w500${item.poster_path}`
-													: FALLBACK_POSTER
+								Create Playlist
+							</button>
+						</div>
+
+						<div className="account-playlist-tabs">
+							{playlists.map(
+								(playlist) => (
+									<button
+										key={
+											playlist.id
+										}
+										type="button"
+										className={`account-playlist-tab ${playlist.id === activePlaylist?.id ? "active" : ""}`}
+										onClick={() => {
+											setSelectedPlaylistId(
+												playlist.id,
+											);
+											setPlaylistNameDraft(
+												playlist.name,
+											);
+										}}
+									>
+										<span>
+											{
+												playlist.name
 											}
-											alt={
-												item.title
+										</span>
+										<strong>
+											{
+												playlist
+													.items
+													.length
 											}
-											className="movie-poster"
-											onError={(
+										</strong>
+									</button>
+								),
+							)}
+						</div>
+
+						{activePlaylist && (
+							<div className="account-playlist-editor">
+								<div>
+									<p className="account-playlist-label">
+										Selected
+										Playlist
+									</p>
+									<h3 className="account-playlist-title">
+										{
+											activePlaylist.name
+										}
+									</h3>
+								</div>
+
+								{activePlaylist.id ===
+								DEFAULT_PLAYLIST_ID ? (
+									<p className="account-playlist-note">
+										This
+										default
+										Watchlist
+										keeps
+										your
+										legacy
+										saved
+										titles
+										and
+										cannot
+										be
+										deleted.
+									</p>
+								) : (
+									<div className="account-playlist-editor-row">
+										<input
+											type="text"
+											value={
+												playlistNameDraft
+											}
+											onChange={(
 												e,
-											) => {
-												(
-													e.target as HTMLImageElement
-												).src =
-													FALLBACK_POSTER;
-											}}
+											) =>
+												setPlaylistNameDraft(
+													e
+														.target
+														.value,
+												)
+											}
+											className="input-glass account-playlist-input"
+											maxLength={
+												40
+											}
 										/>
-										<div className="movie-overlay" />
 										<button
-											className="movie-bookmark active"
-											onClick={(
-												e,
-											) => {
-												e.preventDefault();
-												e.stopPropagation();
-												removeFromWatchlist(
-													item.id,
-												);
-											}}
-											title="Remove from Watchlist"
+											type="button"
+											onClick={
+												renamePlaylist
+											}
+											className="btn btn-glass"
 										>
-											<span className="material-symbols-outlined">
-												bookmark_remove
-											</span>
+											Rename
 										</button>
-										<div className="movie-info">
-											<h4 className="movie-title truncate">
-												{
-													item.title
-												}
-											</h4>
-										</div>
+										<button
+											type="button"
+											onClick={
+												deletePlaylist
+											}
+											className="btn btn-glass account-playlist-delete"
+										>
+											Delete
+										</button>
 									</div>
-								</Link>
+								)}
 							</div>
-						))}
+						)}
 					</div>
-				)}
+
+					{!activePlaylist ||
+					activePlaylist.items.length === 0 ? (
+						<div className="glass-panel account-watchlist-empty">
+							<span className="material-symbols-outlined">
+								bookmark_border
+							</span>
+							{activePlaylist
+								? `${activePlaylist.name} is empty. Browse titles and use the bookmark button to save them here.`
+								: "Create your first playlist to start organizing titles."}
+						</div>
+					) : (
+						<div className="account-watchlist-grid">
+							{activePlaylist.items.map(
+								(item) => (
+									<div
+										key={
+											item.id
+										}
+										className="movie-card group"
+										style={{
+											width: "100%",
+										}}
+									>
+										<Link
+											to={
+												item.mediaType ===
+												"tv"
+													? `/tv/${item.id}`
+													: `/movie/${item.id}`
+											}
+											style={{
+												textDecoration:
+													"none",
+											}}
+										>
+											<div className="movie-card-inner">
+												<img
+													src={
+														item.poster_path
+															? `https://image.tmdb.org/t/p/w500${item.poster_path}`
+															: FALLBACK_POSTER
+													}
+													alt={
+														item.title
+													}
+													className="movie-poster"
+													onError={(
+														e,
+													) => {
+														(
+															e.target as HTMLImageElement
+														).src =
+															FALLBACK_POSTER;
+													}}
+												/>
+												<div className="movie-overlay" />
+												<button
+													className="movie-bookmark active"
+													onClick={(
+														e,
+													) => {
+														e.preventDefault();
+														e.stopPropagation();
+														removeFromPlaylist(
+															item.id,
+														);
+													}}
+													title={`Remove from ${activePlaylist.name}`}
+												>
+													<span className="material-symbols-outlined">
+														bookmark_remove
+													</span>
+												</button>
+												<div className="movie-info">
+													<h4 className="movie-title truncate">
+														{
+															item.title
+														}
+													</h4>
+												</div>
+											</div>
+										</Link>
+									</div>
+								),
+							)}
+						</div>
+					)}
+				</div>
 			</div>
 
 			{/* Watch History Section */}
@@ -583,7 +821,7 @@ export default function Account() {
 				</div>
 
 				{isHistoryLoading &&
-					watchedMovies.length === 0 && (
+					visibleWatchedMovies.length === 0 && (
 						<div className="glass-panel account-watchlist-empty">
 							<span className="material-symbols-outlined">
 								autorenew
@@ -592,13 +830,13 @@ export default function Account() {
 						</div>
 					)}
 
-				{watchedMovies.length > 0 && (
+				{visibleWatchedMovies.length > 0 && (
 					<>
 						<p className="account-history-label">
 							Movies
 						</p>
 						<div className="account-watchlist-grid">
-							{watchedMovies.map(
+							{visibleWatchedMovies.map(
 								(movie) => (
 									<MovieCard
 										key={`movie-${movie.id}`}
@@ -678,18 +916,16 @@ export default function Account() {
 					</>
 				)}
 
-				{!isHistoryLoading &&
-					watchedMovies.length === 0 &&
-					watchedTVCards.length === 0 && (
-						<div className="glass-panel account-watchlist-empty">
-							<span className="material-symbols-outlined">
-								history_toggle_off
-							</span>
-							No watch history yet.
-							Start a movie or episode
-							to build your timeline.
-						</div>
-					)}
+				{isHistoryEmpty && (
+					<div className="glass-panel account-watchlist-empty">
+						<span className="material-symbols-outlined">
+							history_toggle_off
+						</span>
+						No watch history yet. Start a
+						movie or episode to build your
+						timeline.
+					</div>
+				)}
 			</div>
 
 			{/* Toast */}

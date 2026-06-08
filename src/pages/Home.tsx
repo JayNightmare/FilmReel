@@ -6,9 +6,11 @@ import { StorageService } from "../services/storage";
 import { useStorageSync } from "../hooks/useStorageSync";
 import { MovieRow } from "../components/MovieRow";
 import { GenreMap } from "../services/genreMap";
+import { InstallBanner } from "../components/InstallBanner";
+import { useInstallPrompt } from "../hooks/useInstallPrompt";
 import "../styles/Home.css";
 
-const WATCHLIST_KEY = "filmreel_watchlist";
+const PLAYLISTS_KEY = "filmreel_custom_playlists";
 const WATCHED_MOVIES_KEY = "filmreel_watched_movies";
 const TV_PROGRESS_KEY = "filmreel_tv_progress";
 const ACTOR_OF_DAY_KEY = "filmreel_actor_of_day";
@@ -144,12 +146,14 @@ export default function Home() {
 			}
 		});
 
+	const installPrompt = useInstallPrompt();
+
 	const navigate = useNavigate();
 
 	// Reactive localStorage subscriptions
-	const watchlist = useStorageSync(
-		WATCHLIST_KEY,
-		StorageService.getWatchlist,
+	const playlists = useStorageSync(
+		PLAYLISTS_KEY,
+		StorageService.getPlaylists,
 	);
 	const watchedMovies = useStorageSync(
 		WATCHED_MOVIES_KEY,
@@ -164,19 +168,46 @@ export default function Home() {
 		StorageService.getProfile,
 	);
 
-	// Build watchlist as Movie-shaped objects for MovieRow
-	const watchlistAsMovies: Movie[] = watchlist.map((item) => ({
-		id: item.id,
-		title: item.title,
-		poster_path: item.poster_path,
-		backdrop_path: null,
-		overview: "",
-		vote_average: 0,
-		release_date: "",
-		genre_ids: [],
-	}));
+	const playlistRows = playlists
+		.filter((playlist) => playlist.items.length > 0)
+		.map((playlist) => ({
+			id: playlist.id,
+			name: playlist.name,
+			items: playlist.items.map<MixedRowItem>((item) => {
+				if (item.mediaType === "tv") {
+					return {
+						id: item.id,
+						name: item.title,
+						poster_path: item.poster_path,
+						backdrop_path: null,
+						overview: "",
+						vote_average: 0,
+						first_air_date: "",
+						genre_ids: [],
+						_mediaType: "tv",
+					};
+				}
+
+				return {
+					id: item.id,
+					title: item.title,
+					poster_path: item.poster_path,
+					backdrop_path: null,
+					overview: "",
+					vote_average: 0,
+					release_date: "",
+					genre_ids: [],
+					_mediaType: "movie",
+				};
+			}),
+		}));
 
 	const continueWatchingTV: TVShow[] = tvProgress
+		.filter(
+			(progress) =>
+				progress.watchedEpisodes <
+				progress.totalEpisodes,
+		)
 		.slice(0, 20)
 		.map((progress) => ({
 			id: progress.tvId,
@@ -1119,6 +1150,15 @@ export default function Home() {
 				</section>
 			)}
 
+			<InstallBanner
+				isVisible={
+					installPrompt.shouldShowInstallBanner
+				}
+				mode={installPrompt.installBannerMode}
+				onInstall={installPrompt.requestInstall}
+				onDismiss={installPrompt.dismissBanner}
+			/>
+
 			{!isAboutShortcutDismissed && (
 				<section className="home-about-shortcut glass-panel">
 					<div className="home-about-shortcut-header">
@@ -1185,15 +1225,17 @@ export default function Home() {
 				/>
 			)}
 
-			{/* 2. My Watchlist */}
-			{watchlistAsMovies.length > 0 && (
+			{/* 2. My Lists */}
+			{playlistRows.map((playlist) => (
 				<MovieRow
-					title="My Watchlist"
-					initialMovies={watchlistAsMovies}
+					key={playlist.id}
+					title={playlist.name}
+					initialMovies={playlist.items}
 					staticMovies
 					hideViewAll
+					mediaType="mixed"
 				/>
-			)}
+			))}
 
 			{/* 3-4. Favorite Genre (2 rows) */}
 			{favGenreName && favGenreMoviesP1.length > 0 && (

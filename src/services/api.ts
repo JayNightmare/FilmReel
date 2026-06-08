@@ -84,6 +84,15 @@ export interface Episode {
 	vote_average: number;
 }
 
+export interface VideoResult {
+	id: string;
+	key: string;
+	name: string;
+	site: string;
+	type: string;
+	official: boolean;
+}
+
 // Function to safely fetch from TMDB
 const fetchTMDB = async <T>(
 	endpoint: string,
@@ -193,6 +202,20 @@ export const APIService = {
 		return data.results;
 	},
 
+	getMovieVideos: async (movieId: number): Promise<VideoResult[]> => {
+		const data = await fetchTMDB<{ results: VideoResult[] }>(
+			`/movie/${movieId}/videos`,
+		);
+		return data.results ?? [];
+	},
+
+	getTVVideos: async (tvId: number): Promise<VideoResult[]> => {
+		const data = await fetchTMDB<{ results: VideoResult[] }>(
+			`/tv/${tvId}/videos`,
+		);
+		return data.results ?? [];
+	},
+
 	searchPerson: async (query: string): Promise<Person[]> => {
 		const data = await fetchTMDB<{ results: Person[] }>(
 			"/search/person",
@@ -222,6 +245,7 @@ export const APIService = {
 		const data = await fetchTMDB<{ cast: Movie[] }>(
 			`/person/${personId}/movie_credits`,
 		);
+		if (!data || !data.cast) return [];
 		return data.cast.map((movie) => ({
 			id: movie.id,
 			title: movie.title,
@@ -341,6 +365,7 @@ export const APIService = {
 		const data = await fetchTMDB<{ cast: TVShow[] }>(
 			`/person/${personId}/tv_credits`,
 		);
+		if (!data || !data.cast) return [];
 		return data.cast.map((show) => ({
 			id: show.id,
 			name: show.name,

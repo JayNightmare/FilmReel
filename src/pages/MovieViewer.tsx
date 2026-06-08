@@ -1,10 +1,13 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { APIService } from "../services/api";
-import type { Movie, CastMember } from "../services/api";
+import type { Movie, CastMember, VideoResult } from "../services/api";
 import { GenreMap } from "../services/genreMap";
 import { StorageService } from "../services/storage";
+import { useStorageSync } from "../hooks/useStorageSync";
 import { MovieCard } from "../components/MovieCard";
+import { PlaylistPickerModal } from "../components/PlaylistPickerModal";
+import { TrailerModal } from "../components/TrailerModal";
 import { useFeedback } from "../contexts/FeedbackContext";
 import "../styles/MovieViewer.css";
 
@@ -12,6 +15,7 @@ const FALLBACK_POSTER =
 	"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 500 750' fill='none'%3E%3Crect width='500' height='750' fill='%231a1122'/%3E%3Ctext x='250' y='340' text-anchor='middle' fill='%237f13ec' font-family='system-ui' font-size='40' font-weight='bold'%3EFilmReel%3C/text%3E%3Ctext x='250' y='400' text-anchor='middle' fill='%23666' font-family='system-ui' font-size='20'%3ENo Poster%3C/text%3E%3C/svg%3E";
 
 const CONTROLS_IDLE_MS = 3000;
+const PLAYLISTS_KEY = "filmreel_custom_playlists";
 
 export default function MovieViewer() {
 	const { id } = useParams<{ id: string }>();
@@ -23,9 +27,15 @@ export default function MovieViewer() {
 	const [similar, setSimilar] = useState<Movie[]>([]);
 	const [cast, setCast] = useState<CastMember[]>([]);
 	const [loading, setLoading] = useState(true);
-	const [inWatchlist, setInWatchlist] = useState(false);
+	const [showPlaylistPicker, setShowPlaylistPicker] = useState(false);
 	const [playing, setPlaying] = useState(false);
 	const [iframeKey, setIframeKey] = useState(0);
+	const [trailerVideos, setTrailerVideos] = useState<VideoResult[]>([]);
+	const [showTrailer, setShowTrailer] = useState(false);
+	const playlists = useStorageSync(
+		PLAYLISTS_KEY,
+		StorageService.getPlaylists,
+	);
 
 	// Playback state
 	const [controlsVisible, setControlsVisible] = useState(true);
@@ -49,7 +59,7 @@ export default function MovieViewer() {
 				setLoading(true);
 				setPlaying(false);
 				const movieId = parseInt(id, 10);
-				const [data, related, credits] =
+				const [data, related, credits, videos] =
 					await Promise.all([
 						APIService.getMovieDetails(
 							movieId,
@@ -60,13 +70,14 @@ export default function MovieViewer() {
 						APIService.getMovieCredits(
 							movieId,
 						),
+						APIService.getMovieVideos(
+							movieId,
+						),
 					]);
 				setMovie(data);
 				setSimilar(related.slice(0, 6));
 				setCast(credits.slice(0, 15));
-				setInWatchlist(
-					StorageService.isInWatchlist(movieId),
-				);
+				setTrailerVideos(videos);
 			} catch (e) {
 				console.error(
 					"Failed to load movie details",
@@ -148,6 +159,9 @@ export default function MovieViewer() {
 	const releaseYear = movie.release_date
 		? new Date(movie.release_date).getFullYear()
 		: "";
+	const inWatchlist = playlists.some((playlist) =>
+		playlist.items.some((item) => item.id === movie.id),
+	);
 	const genreIds = [
 		...(movie.genre_ids ?? []),
 		...((movie.genres ?? []).map((genre) => genre.id) ?? []),
@@ -156,17 +170,21 @@ export default function MovieViewer() {
 		genreIds.includes(16) && movie.original_language === "ja";
 
 	const toggleWatchlist = () => {
-		if (inWatchlist) {
-			StorageService.removeFromWatchlist(movie.id);
-			setInWatchlist(false);
-		} else {
-			StorageService.addToWatchlist({
-				id: movie.id,
-				title: movie.title,
-				poster_path: movie.poster_path,
-			});
-			setInWatchlist(true);
-		}
+		setShowPlaylistPicker(true);
+	};
+
+	const noMovie404 = () => {
+		return (
+			<div className="viewer-not-found">
+				<span className="material-symbols-outlined">
+					movie_off
+				</span>
+				<h2>Movie Not Found</h2>
+				<Link to="/" className="btn btn-glass">
+					Back to Browse
+				</Link>
+			</div>
+		);
 	};
 
 	const buildEmbedUrl = () => {
@@ -233,7 +251,7 @@ export default function MovieViewer() {
 						className="player-icon-btn player-icon-btn-sm"
 						onClick={(e) => {
 							e.stopPropagation();
-							navigate(-1);
+							navigate("/");
 						}}
 					>
 						<span className="material-symbols-outlined player-icon-sm">
@@ -277,17 +295,18 @@ export default function MovieViewer() {
 					</button>
 				</div>
 
-				<iframe
-					key={iframeKey}
-					src={
-						playing
-							? buildEmbedUrl()
-							: "about:blank"
-					}
-					title={movie.title}
-					allowFullScreen
-					className="viewer-iframe"
-				/>
+				{/* If iframe does not load, show noMovie404 */}
+				{playing ? (
+					<iframe
+						key={iframeKey}
+						src={buildEmbedUrl()}
+						title={movie.title}
+						allowFullScreen
+						className="viewer-iframe"
+					/>
+				) : (
+					noMovie404()
+				)}
 
 				<div
 					className={`player-overlay ${playing ? "hidden" : ""}`}
@@ -418,8 +437,8 @@ export default function MovieViewer() {
 								}
 								title={
 									inWatchlist
-										? "In Watchlist"
-										: "Add to Watchlist"
+										? "Saved to Playlists"
+										: "Save to Playlists"
 								}
 							>
 								<span className="material-symbols-outlined">
@@ -429,7 +448,7 @@ export default function MovieViewer() {
 								</span>
 								{inWatchlist
 									? "Saved"
-									: "Watchlist"}
+									: "Playlists"}
 							</button>
 						</div>
 
@@ -571,9 +590,25 @@ export default function MovieViewer() {
 									: "bookmark_add"}
 							</span>
 							{inWatchlist
-								? "In Watchlist"
-								: "Add to Watchlist"}
+								? "Saved to Playlists"
+								: "Save to Playlists"}
 						</button>
+
+						{trailerVideos.length > 0 && (
+							<button
+								className="btn btn-glass viewer-watchlist-btn"
+								onClick={() =>
+									setShowTrailer(
+										true,
+									)
+								}
+							>
+								<span className="material-symbols-outlined viewer-watchlist-icon">
+									play_circle
+								</span>
+								Watch Trailer
+							</button>
+						)}
 
 						<div className="viewer-meta-list">
 							<div className="viewer-meta-item">
@@ -719,6 +754,25 @@ export default function MovieViewer() {
 					</div>
 				)}
 			</div>
+
+			{showTrailer && (
+				<TrailerModal
+					videos={trailerVideos}
+					title={movie.title}
+					onClose={() => setShowTrailer(false)}
+				/>
+			)}
+
+			<PlaylistPickerModal
+				isOpen={showPlaylistPicker}
+				onClose={() => setShowPlaylistPicker(false)}
+				item={{
+					id: movie.id,
+					title: movie.title,
+					poster_path: movie.poster_path,
+					mediaType: "movie",
+				}}
+			/>
 		</div>
 	);
 }

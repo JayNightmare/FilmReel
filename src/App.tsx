@@ -15,56 +15,88 @@ import { Navbar } from "./components/Navbar";
 import { Footer } from "./components/Footer";
 import { Analytics } from "@vercel/analytics/react";
 import { FeedbackProvider } from "./contexts/FeedbackContext";
+import { useInstallPrompt } from "./hooks/useInstallPrompt";
 
 const Layout = ({ children }: { children: React.ReactNode }) => {
-    return (
-        <FeedbackProvider>
-            <div
-                style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    minHeight: "100vh",
-                }}
-            >
-                <Navbar />
+	const installPrompt = useInstallPrompt();
 
-                <main
-                    className="container"
-                    style={{
-                        flexGrow: 1,
-                        padding: "32px 24px",
-                        display: "flex",
-                        flexDirection: "column",
-                    }}
-                >
-                    {children}
-                </main>
+	return (
+		<FeedbackProvider>
+			<div
+				style={{
+					display: "flex",
+					flexDirection: "column",
+					minHeight: "100vh",
+				}}
+			>
+				<Navbar />
 
-                <Footer />
-            </div>
-            <Analytics />
-        </FeedbackProvider>
-    );
+				<main
+					className="container"
+					style={{
+						flexGrow: 1,
+						padding: "32px 24px",
+						display: "flex",
+						flexDirection: "column",
+					}}
+				>
+					{children}
+				</main>
+
+				<Footer
+					canInstall={installPrompt.canInstall}
+					onInstallClick={
+						installPrompt.requestInstall
+					}
+				/>
+			</div>
+			<Analytics />
+		</FeedbackProvider>
+	);
 };
 
 function App() {
-    return (
-        <BrowserRouter>
-            <Layout>
-                <Routes>
-                    <Route path="/" element={<Home />} />
-                    <Route path="/mood" element={<MoodSurvey />} />
-                    <Route path="/category/:id" element={<Category />} />
-                    <Route path="/search" element={<SearchResults />} />
-                    <Route path="/account" element={<Account />} />
-                    <Route path="/about" element={<About />} />
-                    <Route path="/movie/:id" element={<MovieViewer />} />
-                    <Route path="/tv/:id" element={<TVViewer />} />
-                    <Route path="*" element={<NotFound />} />
-                </Routes>
-            </Layout>
-        </BrowserRouter>
-    );
+	return (
+		<BrowserRouter>
+			<Layout>
+				<Routes>
+					<Route path="/" element={<Home />} />
+					<Route
+						path="/mood"
+						element={<MoodSurvey />}
+					/>
+					<Route
+						path="/category/:id"
+						element={<Category />}
+					/>
+					<Route
+						path="/search"
+						element={<SearchResults />}
+					/>
+					<Route
+						path="/account"
+						element={<Account />}
+					/>
+					<Route
+						path="/about"
+						element={<About />}
+					/>
+					<Route
+						path="/movie/:id"
+						element={<MovieViewer />}
+					/>
+					<Route
+						path="/tv/:id"
+						element={<TVViewer />}
+					/>
+					<Route
+						path="*"
+						element={<NotFound />}
+					/>
+				</Routes>
+			</Layout>
+		</BrowserRouter>
+	);
 }
 
 export default App;

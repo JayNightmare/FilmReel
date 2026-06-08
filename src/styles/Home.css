@@ -127,10 +127,6 @@
         width: 100%;
     }
 
-    .home-about-shortcut-actions {
-        width: 100%;
-    }
-
     .home-about-shortcut-dismiss {
         flex-shrink: 0;
     }

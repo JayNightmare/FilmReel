@@ -1,10 +1,16 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useFeedback } from "../contexts/FeedbackContext";
+import type { InstallPromptOutcome } from "../hooks/useInstallPrompt";
 import { ToastNotif } from "./ToastNotif";
 import "../styles/Footer.css";
 
-export const Footer = () => {
+interface FooterProps {
+	canInstall: boolean;
+	onInstallClick: () => Promise<InstallPromptOutcome>;
+}
+
+export const Footer = ({ canInstall, onInstallClick }: FooterProps) => {
 	const { openFeedback } = useFeedback();
 	const TOAST_DURATION_MS = 2600;
 	const TOAST_EXIT_MS = 220;
@@ -16,6 +22,40 @@ export const Footer = () => {
 	const [isToastClosing, setIsToastClosing] = useState(false);
 	const toastHideTimerRef = useRef<number | null>(null);
 	const toastRemoveTimerRef = useRef<number | null>(null);
+
+	const closeToast = useCallback(() => {
+		if (toastHideTimerRef.current) {
+			window.clearTimeout(toastHideTimerRef.current);
+		}
+		setIsToastClosing(true);
+		if (toastRemoveTimerRef.current) {
+			window.clearTimeout(toastRemoveTimerRef.current);
+		}
+		toastRemoveTimerRef.current = window.setTimeout(() => {
+			setToast(null);
+			setIsToastClosing(false);
+		}, TOAST_EXIT_MS);
+	}, [TOAST_EXIT_MS]);
+
+	const showToast = useCallback(
+		(type: "success" | "error" | "info", message: string) => {
+			setToast({ id: Date.now(), type, message });
+			setIsToastClosing(false);
+			if (toastHideTimerRef.current) {
+				window.clearTimeout(toastHideTimerRef.current);
+			}
+			if (toastRemoveTimerRef.current) {
+				window.clearTimeout(
+					toastRemoveTimerRef.current,
+				);
+			}
+			toastHideTimerRef.current = window.setTimeout(
+				closeToast,
+				TOAST_DURATION_MS,
+			);
+		},
+		[TOAST_DURATION_MS, closeToast],
+	);
 
 	useEffect(() => {
 		return () => {
@@ -30,36 +70,22 @@ export const Footer = () => {
 		};
 	}, []);
 
-	const closeToast = () => {
-		if (toastHideTimerRef.current) {
-			window.clearTimeout(toastHideTimerRef.current);
+	const handleInstallClick = async () => {
+		const outcome = await onInstallClick();
+		if (outcome === "accepted") {
+			showToast(
+				"success",
+				"FilmReel installed successfully.",
+			);
+			return;
 		}
-		setIsToastClosing(true);
-		if (toastRemoveTimerRef.current) {
-			window.clearTimeout(toastRemoveTimerRef.current);
-		}
-		toastRemoveTimerRef.current = window.setTimeout(() => {
-			setToast(null);
-			setIsToastClosing(false);
-		}, TOAST_EXIT_MS);
-	};
 
-	const showToast = (
-		type: "success" | "error" | "info",
-		message: string,
-	) => {
-		setToast({ id: Date.now(), type, message });
-		setIsToastClosing(false);
-		if (toastHideTimerRef.current) {
-			window.clearTimeout(toastHideTimerRef.current);
+		if (outcome === "dismissed") {
+			showToast("info", "Install prompt dismissed.");
+			return;
 		}
-		if (toastRemoveTimerRef.current) {
-			window.clearTimeout(toastRemoveTimerRef.current);
-		}
-		toastHideTimerRef.current = window.setTimeout(
-			closeToast,
-			TOAST_DURATION_MS,
-		);
+
+		showToast("error", "Install is unavailable right now.");
 	};
 
 	return (
@@ -103,6 +129,20 @@ export const Footer = () => {
 							recommendations based on
 							your current vibe.
 						</p>
+						{canInstall && (
+							<button
+								type="button"
+								onClick={() => {
+									void handleInstallClick();
+								}}
+								className="btn btn-primary footer-install-btn"
+							>
+								<span className="material-symbols-outlined">
+									download
+								</span>
+								Install App
+							</button>
+						)}
 					</div>
 
 					<div className="footer-section">
