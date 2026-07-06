@@ -180,6 +180,8 @@ const TVViewer = () => {
 		});
 	};
 
+	const activeProviderConfig = getProviderConfig(provider);
+
 	const handlePlay = () => {
 		if (!selectedEpisode || !show) return;
 		setPlaying(true);
@@ -292,13 +294,14 @@ const TVViewer = () => {
 						src={buildEmbedUrl()}
 						title={show.name}
 						referrerPolicy={
-							getProviderConfig(
-								provider,
-							).requiresOriginReferrer
+							activeProviderConfig.requiresOriginReferrer
 								? "origin"
 								: "strict-origin-when-cross-origin"
 						}
-						sandbox="allow-scripts allow-same-origin allow-presentation"
+						sandbox={
+							activeProviderConfig.sandboxAttributes ||
+							undefined
+						}
 						allowFullScreen
 						className="tv-iframe"
 					/>

@@ -39,13 +39,11 @@ export const PROVIDERS: ProviderConfig[] = [
         id: "vidking",
         label: "VidKing",
         requiresOriginReferrer: false,
-        sandboxAttributes: "",
     },
     {
         id: "superembed",
         label: "SuperEmbed",
         requiresOriginReferrer: false,
-        sandboxAttributes: "",
     },
 ];
 

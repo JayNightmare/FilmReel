@@ -225,6 +225,8 @@ export default function MovieViewer() {
 		});
 	};
 
+	const activeProviderConfig = getProviderConfig(provider);
+
 	// Full control bar for the overlay (pre-play, decorative)
 	const renderOverlayControls = () => (
 		<div
@@ -322,16 +324,13 @@ export default function MovieViewer() {
 						src={buildEmbedUrl()}
 						title={movie.title}
 						referrerPolicy={
-							getProviderConfig(
-								provider,
-							).requiresOriginReferrer
+							activeProviderConfig.requiresOriginReferrer
 								? "origin"
 								: "strict-origin-when-cross-origin"
 						}
 						sandbox={
-							getProviderConfig(
-								provider,
-							).sandboxAttributes
+							activeProviderConfig.sandboxAttributes ||
+							undefined
 						}
 						allowFullScreen
 						className="viewer-iframe"
