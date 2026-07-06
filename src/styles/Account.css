@@ -39,6 +39,7 @@
     display: flex;
     flex-direction: column;
     gap: 24px;
+    border-radius: var(--glass-radius);
 }
 
 .account-avatar-row {
@@ -93,7 +94,7 @@
 
 .account-sidebar-title {
     font-size: 1.5rem;
-    margin-bottom: 8px;
+    margin-top: 14px;
     display: flex;
     align-items: center;
     gap: 8px;
@@ -124,7 +125,8 @@
 }
 
 .account-playlist-shell {
-    padding: 22px;
+    /* padding: 22px; */
+    border-radius: var(--glass-radius);
     display: grid;
     gap: 20px;
 }
@@ -135,9 +137,8 @@
 }
 
 .account-playlist-create {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 12px;
+    display: flex;
+    justify-content: flex-end;
 }
 
 .account-playlist-input {
@@ -147,8 +148,8 @@
 .account-playlist-tabs {
     display: flex;
     gap: 12px;
-    overflow-x: auto;
     padding-bottom: 4px;
+    z-index: 1;
 }
 
 .account-playlist-tab {
@@ -214,6 +215,91 @@
     font-size: 0.9rem;
     line-height: 1.5;
     color: var(--text-secondary);
+}
+
+.account-playlist-menu-wrap {
+    position: relative;
+}
+
+.account-playlist-menu-btn {
+    width: 40px;
+    height: 40px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.06);
+    color: white;
+    cursor: pointer;
+}
+
+.account-playlist-menu {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 6px);
+    width: 160px;
+    border-radius: 12px;
+    background: rgba(24, 20, 31, 0.96);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    box-shadow: 0 14px 28px rgba(0, 0, 0, 0.38);
+    overflow: hidden;
+    z-index: 20;
+}
+
+.account-playlist-menu button {
+    width: 100%;
+    background: transparent;
+    color: white;
+    border: 0;
+    text-align: left;
+    padding: 10px 12px;
+    cursor: pointer;
+    font: inherit;
+}
+
+.account-playlist-menu button:hover {
+    background: rgba(127, 19, 236, 0.22);
+}
+
+.account-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(7, 5, 10, 0.72);
+    -webkit-backdrop-filter: blur(4px);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9998;
+    padding: 16px;
+}
+
+.account-modal {
+    width: min(500px, 100%);
+    border-radius: 14px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.account-modal h3 {
+    margin: 0;
+    font-size: 1.2rem;
+}
+
+.account-modal-subtitle {
+    margin: 0 0 2px;
+    color: var(--text-secondary);
+    font-size: 0.92rem;
+}
+
+.account-modal-actions {
+    margin-top: 8px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
 }
 
 .account-playlist-editor-row {
@@ -297,13 +383,17 @@
 
 @media (max-width: 768px) {
 
-    .account-playlist-create,
     .account-playlist-editor-row {
         grid-template-columns: 1fr;
     }
 
     .account-playlist-editor {
         flex-direction: column;
+    }
+
+    .account-modal-actions {
+        display: grid;
+        grid-template-columns: 1fr;
     }
 }
 

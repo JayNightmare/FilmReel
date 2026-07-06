@@ -1,9 +1,29 @@
+import { useEffect } from "react";
 import { Link } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import { useFeedback } from "../contexts/FeedbackContext";
 import "../styles/About.css";
 
 export default function About() {
 	const { openFeedback } = useFeedback();
+	const location = useLocation();
+
+	useEffect(() => {
+		if (location.hash !== "#adblock-setup") return;
+
+		const scrollToSection = () => {
+			const section =
+				document.getElementById("adblock-setup");
+			if (!section) return;
+			section.scrollIntoView({
+				behavior: "smooth",
+				block: "start",
+			});
+		};
+
+		requestAnimationFrame(scrollToSection);
+		setTimeout(scrollToSection, 140);
+	}, [location.hash]);
 
 	return (
 		<div className="about-page animate-in fade-in">
@@ -180,6 +200,95 @@ export default function About() {
 						Thanks for trying FilmReel and
 						supporting an independent open
 						source project.
+					</p>
+				</article>
+
+				<article
+					id="adblock-setup"
+					className="about-card glass-panel about-card-wide"
+				>
+					<h2>
+						Adblock Setup Guide (Phone + TV
+						+ Network)
+					</h2>
+					<p>
+						Because playback is embedded
+						from third-party providers, ads
+						can appear there. I cannot
+						remove those ads server-side,
+						but you can reduce them by
+						running an adblocker on your
+						browser or network.
+					</p>
+					<div className="about-adblock-grid">
+						<div className="about-adblock-item">
+							<h3>Android Phones</h3>
+							<p>
+								Use a browser
+								with extension
+								support or a
+								mobile browser
+								with built-in
+								ad/tracker
+								blocking. Then
+								enable a
+								reputable filter
+								list.
+							</p>
+						</div>
+						<div className="about-adblock-item">
+							<h3>iPhone / iPad</h3>
+							<p>
+								Use Safari
+								content blockers
+								from the App
+								Store and turn
+								them on in iOS
+								settings for
+								Safari.
+							</p>
+						</div>
+						<div className="about-adblock-item">
+							<h3>Smart TVs</h3>
+							<p>
+								If your TV
+								browser supports
+								extensions,
+								install one
+								there. If not,
+								network-level
+								blocking is
+								usually the
+								easiest route.
+							</p>
+						</div>
+						<div className="about-adblock-item">
+							<h3>
+								Network-Wide
+								Option
+							</h3>
+							<p>
+								NodeVPN can be
+								used as a
+								network-wide
+								blocker setup so
+								phones, TVs, and
+								other devices
+								can benefit from
+								ad/tracker
+								filtering
+								without
+								per-device
+								browser addons.
+							</p>
+						</div>
+					</div>
+					<p className="about-adblock-note">
+						Tip: if a player still shows
+						ads, check whether private
+						DNS/VPN/adblocker is active on
+						that specific device and browser
+						profile.
 					</p>
 				</article>
 			</section>

@@ -17,6 +17,7 @@ import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/react";
 import { FeedbackProvider } from "./contexts/FeedbackContext";
 import { useInstallPrompt } from "./hooks/useInstallPrompt";
+import { AdblockCheckerBanner } from "./components/AdblockCheckerBanner";
 
 const Layout = ({ children }: { children: React.ReactNode }) => {
 	const installPrompt = useInstallPrompt();
@@ -41,6 +42,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
 						flexDirection: "column",
 					}}
 				>
+					<AdblockCheckerBanner />
 					{children}
 				</main>
 

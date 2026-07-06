@@ -7,9 +7,15 @@ import { useStorageSync } from "../hooks/useStorageSync";
 import { MovieCard } from "../components/MovieCard";
 import { PlaylistPickerModal } from "../components/PlaylistPickerModal";
 import { useFeedback } from "../contexts/FeedbackContext";
+import {
+	DEFAULT_PROVIDER,
+	PROVIDERS,
+	buildApiPlayerUrl,
+	getProviderConfig,
+	type ProviderId,
+} from "../services/providerService";
 import "../styles/TVViewer.css";
 
-type Provider = "superembed";
 type AudioTrack = "dub" | "sub";
 
 const FALLBACK_POSTER =
@@ -31,7 +37,7 @@ const TVViewer = () => {
 		null,
 	);
 	const [playing, setPlaying] = useState(false);
-	const [provider, setProvider] = useState<Provider>("superembed");
+	const [provider, setProvider] = useState<ProviderId>(DEFAULT_PROVIDER);
 	const [audioTrack, setAudioTrack] = useState<AudioTrack>("dub");
 	const [cast, setCast] = useState<CastMember[]>([]);
 	const [similar, setSimilar] = useState<TVShow[]>([]);
@@ -143,21 +149,17 @@ const TVViewer = () => {
 		const e = selectedEpisode.episode_number;
 		const animeLanguage = audioTrack === "dub" ? "en" : "ja";
 		const animeAudio = audioTrack === "dub" ? "dub" : "sub";
+		if (!id) return "about:blank";
 
-		if (provider === "superembed") {
-			const params = new URLSearchParams({
-				video_id: id || "",
-				tmdb: "1",
-				s: s.toString(),
-				e: e.toString(),
-			});
-			if (isAnime) {
-				params.set("lang", animeLanguage);
-				params.set("audio", animeAudio);
-			}
-			return `/api/player?${params.toString()}`;
-		}
-		return "about:blank";
+		return buildApiPlayerUrl({
+			provider,
+			videoId: id,
+			mediaType: "tv",
+			season: s,
+			episode: e,
+			lang: isAnime ? animeLanguage : undefined,
+			audio: isAnime ? animeAudio : undefined,
+		});
 	};
 
 	const handlePlay = () => {
@@ -271,6 +273,14 @@ const TVViewer = () => {
 						key={iframeKey}
 						src={buildEmbedUrl()}
 						title={show.name}
+						referrerPolicy={
+							getProviderConfig(
+								provider,
+							).requiresOriginReferrer
+								? "origin"
+								: "strict-origin-when-cross-origin"
+						}
+						sandbox="allow-scripts allow-same-origin allow-presentation"
 						allowFullScreen
 						className="tv-iframe"
 					/>
@@ -649,7 +659,7 @@ const TVViewer = () => {
 											setProvider(
 												e
 													.target
-													.value as Provider,
+													.value as ProviderId,
 											);
 											setPlaying(
 												false,
@@ -657,10 +667,24 @@ const TVViewer = () => {
 										}}
 										title="Select Streaming Provider"
 									>
-										<option value="superembed">
-											SuperEmbed
-											(Recommended)
-										</option>
+										{PROVIDERS.map(
+											(
+												entry,
+											) => (
+												<option
+													key={
+														entry.id
+													}
+													value={
+														entry.id
+													}
+												>
+													{
+														entry.label
+													}
+												</option>
+											),
+										)}
 									</select>
 									{isAnime && (
 										<>

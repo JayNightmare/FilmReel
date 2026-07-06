@@ -1,4 +1,9 @@
-import { useState, useCallback, useEffect } from "react";
+import {
+	useState,
+	useCallback,
+	useEffect,
+	useRef,
+} from "react";
 import { Link } from "react-router-dom";
 import { APIService } from "../services/api";
 import type { Movie, TVShow } from "../services/api";
@@ -18,17 +23,46 @@ const WATCHED_MOVIES_KEY = "filmreel_watched_movies";
 const TV_PROGRESS_KEY = "filmreel_tv_progress";
 const DEFAULT_PLAYLIST_ID = "default-watchlist";
 
+const PLAYLIST_GENRES = [
+	{ id: 28, label: "Action" },
+	{ id: 16, label: "Animation" },
+	{ id: 35, label: "Comedy" },
+	{ id: 99, label: "Documentary" },
+	{ id: 18, label: "Drama" },
+	{ id: 878, label: "Sci-Fi" },
+	{ id: 27, label: "Horror" },
+	{ id: 10749, label: "Romance" },
+];
+
+type PlaylistDialogMode = "create" | "rename";
+type PlaylistWithGenre = Playlist & {
+	mainGenreId?: number | null;
+};
+
+type StorageServicePlaylistExtensions = typeof StorageService & {
+	createPlaylist: (
+		name: string,
+		options?: { mainGenreId?: number | null },
+	) => PlaylistWithGenre;
+	updatePlaylist: (
+		playlistId: string,
+		updates: { name?: string; mainGenreId?: number | null },
+	) => PlaylistWithGenre | null;
+};
+
 const FALLBACK_POSTER =
 	"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 500 750' fill='none'%3E%3Crect width='500' height='750' fill='%231a1122'/%3E%3Ctext x='250' y='340' text-anchor='middle' fill='%237f13ec' font-family='system-ui' font-size='40' font-weight='bold'%3EFilmReel%3C/text%3E%3Ctext x='250' y='400' text-anchor='middle' fill='%23666' font-family='system-ui' font-size='20'%3ENo Poster%3C/text%3E%3C/svg%3E";
 
 export default function Account() {
+	const storage =
+		StorageService as StorageServicePlaylistExtensions;
 	const [profile, setProfile] = useState<UserProfile>(() =>
 		StorageService.getProfile(),
 	);
 	const [history] = useState<MoodResult[]>(() =>
 		StorageService.getMoodHistory(),
 	);
-	const playlists = useStorageSync<Playlist[]>(
+	const playlists = useStorageSync<PlaylistWithGenre[]>(
 		PLAYLISTS_KEY,
 		StorageService.getPlaylists,
 	);
@@ -46,8 +80,14 @@ export default function Account() {
 	const [toast, setToast] = useState<string | null>(null);
 	const [selectedPlaylistId, setSelectedPlaylistId] =
 		useState(DEFAULT_PLAYLIST_ID);
-	const [newPlaylistName, setNewPlaylistName] = useState("");
-	const [playlistNameDraft, setPlaylistNameDraft] = useState("");
+	const [showPlaylistDialog, setShowPlaylistDialog] = useState(false);
+	const [playlistDialogMode, setPlaylistDialogMode] =
+		useState<PlaylistDialogMode>("create");
+	const [playlistDialogName, setPlaylistDialogName] = useState("");
+	const [playlistDialogGenreId, setPlaylistDialogGenreId] =
+		useState("");
+	const [showPlaylistMenu, setShowPlaylistMenu] = useState(false);
+	const playlistMenuRef = useRef<HTMLDivElement>(null);
 
 	const showToast = useCallback((message: string) => {
 		setToast(message);
@@ -185,17 +225,28 @@ export default function Account() {
 	};
 
 	const createPlaylist = () => {
-		if (!newPlaylistName.trim()) {
+		if (!playlistDialogName.trim()) {
 			showToast("Enter a playlist name");
 			return;
 		}
 
 		try {
-			const playlist =
-				StorageService.createPlaylist(newPlaylistName);
-			setNewPlaylistName("");
+			const parsedGenre = Number.parseInt(
+				playlistDialogGenreId,
+				10,
+			);
+			const playlist = storage.createPlaylist(
+				playlistDialogName,
+				{
+					mainGenreId: Number.isNaN(parsedGenre)
+						? null
+						: parsedGenre,
+				},
+			);
 			setSelectedPlaylistId(playlist.id);
-			setPlaylistNameDraft(playlist.name);
+			setShowPlaylistDialog(false);
+			setPlaylistDialogName("");
+			setPlaylistDialogGenreId("");
 			showToast(`Created ${playlist.name}`);
 		} catch (error) {
 			showToast(
@@ -213,11 +264,23 @@ export default function Account() {
 		) {
 			return;
 		}
+		if (!playlistDialogName.trim()) {
+			showToast("Enter a playlist name");
+			return;
+		}
 
-		const updatedPlaylist = StorageService.updatePlaylist(
+		const parsedGenre = Number.parseInt(
+			playlistDialogGenreId,
+			10,
+		);
+
+		const updatedPlaylist = storage.updatePlaylist(
 			activePlaylist.id,
 			{
-				name: playlistNameDraft,
+				name: playlistDialogName,
+				mainGenreId: Number.isNaN(parsedGenre)
+					? null
+					: parsedGenre,
 			},
 		);
 
@@ -226,7 +289,9 @@ export default function Account() {
 			return;
 		}
 
-		setPlaylistNameDraft(updatedPlaylist.name);
+		setShowPlaylistDialog(false);
+		setPlaylistDialogName("");
+		setPlaylistDialogGenreId("");
 		showToast(`Renamed to ${updatedPlaylist.name}`);
 	};
 
@@ -238,11 +303,6 @@ export default function Account() {
 			return;
 		}
 
-		const confirmed = window.confirm(
-			`Delete ${activePlaylist.name}? This only removes the playlist, not the titles from other playlists.`,
-		);
-		if (!confirmed) return;
-
 		const didDelete = StorageService.deletePlaylist(
 			activePlaylist.id,
 		);
@@ -252,9 +312,74 @@ export default function Account() {
 		}
 
 		setSelectedPlaylistId(DEFAULT_PLAYLIST_ID);
-		setPlaylistNameDraft("");
+		setShowPlaylistMenu(false);
 		showToast(`Deleted ${activePlaylist.name}`);
 	};
+
+	const openCreatePlaylistDialog = () => {
+		setPlaylistDialogMode("create");
+		setPlaylistDialogName("");
+		setPlaylistDialogGenreId("");
+		setShowPlaylistDialog(true);
+	};
+
+	const openRenamePlaylistDialog = () => {
+		if (
+			!activePlaylist ||
+			activePlaylist.id === DEFAULT_PLAYLIST_ID
+		) {
+			return;
+		}
+		setPlaylistDialogMode("rename");
+		setPlaylistDialogName(activePlaylist.name);
+		setPlaylistDialogGenreId(
+			activePlaylist.mainGenreId
+				? String(activePlaylist.mainGenreId)
+				: "",
+		);
+		setShowPlaylistDialog(true);
+		setShowPlaylistMenu(false);
+	};
+
+	const submitPlaylistDialog = () => {
+		if (playlistDialogMode === "create") {
+			createPlaylist();
+			return;
+		}
+		renamePlaylist();
+	};
+
+	useEffect(() => {
+		if (!showPlaylistMenu) return;
+
+		const onPointerDown = (event: MouseEvent) => {
+			if (!playlistMenuRef.current) return;
+			if (
+				!playlistMenuRef.current.contains(
+					event.target as Node,
+				)
+			) {
+				setShowPlaylistMenu(false);
+			}
+		};
+
+		const onEscape = (event: KeyboardEvent) => {
+			if (event.key === "Escape") {
+				setShowPlaylistMenu(false);
+			}
+		};
+
+		document.addEventListener("mousedown", onPointerDown);
+		document.addEventListener("keydown", onEscape);
+
+		return () => {
+			document.removeEventListener(
+				"mousedown",
+				onPointerDown,
+			);
+			document.removeEventListener("keydown", onEscape);
+		};
+	}, [showPlaylistMenu]);
 
 	const removeFromPlaylist = (movieId: number) => {
 		if (!activePlaylist) return;
@@ -490,7 +615,7 @@ export default function Account() {
 
 					{history.length === 0 ? (
 						<div
-							className="glass-panel"
+							className=""
 							style={{
 								padding: "24px",
 								textAlign: "center",
@@ -561,30 +686,12 @@ export default function Account() {
 					)}
 				</div>
 
-				<div className="glass-panel account-playlist-shell">
+				<div className="account-playlist-shell">
 					<div className="account-playlist-toolbar">
 						<div className="account-playlist-create">
-							<input
-								type="text"
-								value={
-									newPlaylistName
-								}
-								onChange={(e) =>
-									setNewPlaylistName(
-										e
-											.target
-											.value,
-									)
-								}
-								className="input-glass account-playlist-input"
-								placeholder="Create a new playlist"
-								maxLength={40}
-							/>
 							<button
 								type="button"
-								onClick={
-									createPlaylist
-								}
+								onClick={openCreatePlaylistDialog}
 								className="btn btn-primary"
 							>
 								Create Playlist
@@ -604,9 +711,7 @@ export default function Account() {
 											setSelectedPlaylistId(
 												playlist.id,
 											);
-											setPlaylistNameDraft(
-												playlist.name,
-											);
+											setShowPlaylistMenu(false);
 										}}
 									>
 										<span>
@@ -638,6 +743,16 @@ export default function Account() {
 											activePlaylist.name
 										}
 									</h3>
+									{activePlaylist.mainGenreId ? (
+										<p className="account-playlist-note">
+											Main genre:{" "}
+											{PLAYLIST_GENRES.find(
+												(genre) =>
+													genre.id ===
+													activePlaylist.mainGenreId,
+											)?.label ?? "Custom"}
+										</p>
+									) : null}
 								</div>
 
 								{activePlaylist.id ===
@@ -657,44 +772,40 @@ export default function Account() {
 										deleted.
 									</p>
 								) : (
-									<div className="account-playlist-editor-row">
-										<input
-											type="text"
-											value={
-												playlistNameDraft
-											}
-											onChange={(
-												e,
-											) =>
-												setPlaylistNameDraft(
-													e
-														.target
-														.value,
+									<div
+										className="account-playlist-menu-wrap"
+										ref={playlistMenuRef}
+									>
+										<button
+											type="button"
+											className="account-playlist-menu-btn"
+											title="Playlist options"
+											onClick={() =>
+												setShowPlaylistMenu(
+													(prev) => !prev,
 												)
 											}
-											className="input-glass account-playlist-input"
-											maxLength={
-												40
-											}
-										/>
-										<button
-											type="button"
-											onClick={
-												renamePlaylist
-											}
-											className="btn btn-glass"
 										>
-											Rename
+											<span className="material-symbols-outlined">
+												more_vert
+											</span>
 										</button>
-										<button
-											type="button"
-											onClick={
-												deletePlaylist
-											}
-											className="btn btn-glass account-playlist-delete"
-										>
-											Delete
-										</button>
+										{showPlaylistMenu ? (
+											<div className="account-playlist-menu">
+												<button
+													type="button"
+													onClick={openRenamePlaylistDialog}
+												>
+													Rename
+												</button>
+												<button
+													type="button"
+													onClick={deletePlaylist}
+												>
+													Delete
+												</button>
+											</div>
+										) : null}
 									</div>
 								)}
 							</div>
@@ -927,6 +1038,73 @@ export default function Account() {
 					</div>
 				)}
 			</div>
+
+			{/* Toast */}
+			{showPlaylistDialog ? (
+				<div
+					className="account-modal-backdrop"
+					onClick={() => setShowPlaylistDialog(false)}
+				>
+					<div
+						className="glass-panel account-modal"
+						onClick={(e) => e.stopPropagation()}
+					>
+						<h3>
+							{playlistDialogMode === "create"
+								? "Create Playlist"
+								: "Rename Playlist"}
+						</h3>
+						<p className="account-modal-subtitle">
+							Set a playlist title and optional main genre.
+						</p>
+						<label className="label-glass">Playlist Title</label>
+						<input
+							type="text"
+							className="input-glass"
+							maxLength={40}
+							value={playlistDialogName}
+							onChange={(e) =>
+								setPlaylistDialogName(e.target.value)
+							}
+							placeholder="e.g. Friday Night Thrillers"
+						/>
+						<label className="label-glass">Main Genre (optional)</label>
+						<select
+							className="input-glass"
+							value={playlistDialogGenreId}
+							onChange={(e) =>
+								setPlaylistDialogGenreId(e.target.value)
+							}
+							title="Select playlist genre"
+						>
+							<option value="">No main genre</option>
+							{PLAYLIST_GENRES.map((genre) => (
+								<option key={genre.id} value={genre.id}>
+									{genre.label}
+								</option>
+							))}
+						</select>
+						<div className="account-modal-actions">
+							<button
+								type="button"
+								className="btn btn-glass"
+								onClick={() => setShowPlaylistDialog(false)}
+							>
+								Cancel
+							</button>
+							<button
+								type="button"
+								className="btn btn-primary"
+								onClick={submitPlaylistDialog}
+							>
+								{playlistDialogMode === "create"
+									? "Create"
+									: "Save"}
+							</button>
+						</div>
+					</div>
+				</div>
+			) : null}
 
 			{/* Toast */}
 			<div className={`toast ${toast ? "visible" : ""}`}>

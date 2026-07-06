@@ -800,6 +800,8 @@ export default function Home() {
 		}
 	};
 
+	// setAdblocker();
+
 	return (
 		<div className="home-container">
 			{/* Hero Section */}

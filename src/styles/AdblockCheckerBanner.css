@@ -1,0 +1,74 @@
+.adblock-banner {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 14px;
+    border-radius: 14px;
+    padding: 14px;
+    margin-bottom: 16px;
+    border: 1px solid rgba(255, 190, 92, 0.35);
+    background: linear-gradient(120deg, rgba(255, 158, 46, 0.2), rgba(127, 19, 236, 0.14));
+}
+
+.adblock-banner-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.26);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.adblock-banner-icon .material-symbols-outlined {
+    font-size: 22px;
+    color: #ffd174;
+}
+
+.adblock-banner-title {
+    font-size: 0.98rem;
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+
+.adblock-banner-text {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    line-height: 1.45;
+}
+
+.adblock-banner-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.adblock-banner-btn {
+    font-size: 0.86rem;
+    padding: 10px 14px;
+    min-height: 40px;
+}
+
+@media (max-width: 900px) {
+    .adblock-banner {
+        grid-template-columns: 1fr;
+        align-items: start;
+    }
+
+    .adblock-banner-actions {
+        width: 100%;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .adblock-banner-btn {
+        width: 100%;
+    }
+}
+
+@media (max-width: 480px) {
+    .adblock-banner-actions {
+        grid-template-columns: 1fr;
+    }
+}

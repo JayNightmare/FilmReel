@@ -9,6 +9,13 @@ import { MovieCard } from "../components/MovieCard";
 import { PlaylistPickerModal } from "../components/PlaylistPickerModal";
 import { TrailerModal } from "../components/TrailerModal";
 import { useFeedback } from "../contexts/FeedbackContext";
+import {
+	DEFAULT_PROVIDER,
+	PROVIDERS,
+	buildApiPlayerUrl,
+	getProviderConfig,
+	type ProviderId,
+} from "../services/providerService";
 import "../styles/MovieViewer.css";
 
 const FALLBACK_POSTER =
@@ -41,9 +48,8 @@ export default function MovieViewer() {
 	const [controlsVisible, setControlsVisible] = useState(true);
 
 	// Provider state
-	type Provider = "superembed";
 	type AudioTrack = "dub" | "sub";
-	const [provider, setProvider] = useState<Provider>("superembed");
+	const [provider, setProvider] = useState<ProviderId>(DEFAULT_PROVIDER);
 	const [audioTrack, setAudioTrack] = useState<AudioTrack>("dub");
 
 	const { openFeedback } = useFeedback();
@@ -190,19 +196,15 @@ export default function MovieViewer() {
 	const buildEmbedUrl = () => {
 		const animeLanguage = audioTrack === "dub" ? "en" : "ja";
 		const animeAudio = audioTrack === "dub" ? "dub" : "sub";
-		if (provider === "superembed") {
-			const params = new URLSearchParams({
-				video_id: id || "",
-				tmdb: "1",
-			});
-			if (isAnime) {
-				params.set("lang", animeLanguage);
-				params.set("audio", animeAudio);
-			}
-			// Use the local Vercel API endpoint
-			return `/api/player?${params.toString()}`;
-		}
-		return "about:blank";
+		if (!id) return "about:blank";
+
+		return buildApiPlayerUrl({
+			provider,
+			videoId: id,
+			mediaType: "movie",
+			lang: isAnime ? animeLanguage : undefined,
+			audio: isAnime ? animeAudio : undefined,
+		});
 	};
 
 	// Full control bar for the overlay (pre-play, decorative)
@@ -301,6 +303,14 @@ export default function MovieViewer() {
 						key={iframeKey}
 						src={buildEmbedUrl()}
 						title={movie.title}
+						referrerPolicy={
+							getProviderConfig(
+								provider,
+							).requiresOriginReferrer
+								? "origin"
+								: "strict-origin-when-cross-origin"
+						}
+						sandbox="allow-scripts allow-same-origin allow-presentation"
 						allowFullScreen
 						className="viewer-iframe"
 					/>
@@ -637,7 +647,7 @@ export default function MovieViewer() {
 											setProvider(
 												e
 													.target
-													.value as Provider,
+													.value as ProviderId,
 											);
 											setPlaying(
 												false,
@@ -645,10 +655,24 @@ export default function MovieViewer() {
 										}}
 										title="Select Streaming Provider"
 									>
-										<option value="superembed">
-											SuperEmbed
-											(Recommended)
-										</option>
+										{PROVIDERS.map(
+											(
+												entry,
+											) => (
+												<option
+													key={
+														entry.id
+													}
+													value={
+														entry.id
+													}
+												>
+													{
+														entry.label
+													}
+												</option>
+											),
+										)}
 									</select>
 									{isAnime && (
 										<>

@@ -448,6 +448,25 @@
     transform: rotate(180deg);
 }
 
+.home-warning {
+    border: 1px solid transparent;
+    animation: pulse-border 2s infinite;
+}
+
+@keyframes pulse-border {
+    0% {
+        border-color: rgba(127, 19, 236, 0.3);
+    }
+
+    50% {
+        border-color: rgba(236, 19, 142, 0.6);
+    }
+
+    100% {
+        border-color: rgba(127, 19, 236, 0.3);
+    }
+}
+
 /* ---- Mobile Responsive ---- */
 @media (max-width: 768px) {
     .home-container {

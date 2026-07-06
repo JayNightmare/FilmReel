@@ -21,6 +21,7 @@ export interface WatchlistItem {
 export interface Playlist {
 	id: string;
 	name: string;
+	mainGenreId?: number | null;
 	createdAt: string;
 	updatedAt: string;
 	isDefault?: boolean;
@@ -151,6 +152,10 @@ const normalizePlaylist = (
 	return {
 		id: playlist.id,
 		name: playlist.name.trim() || "Untitled Playlist",
+		mainGenreId:
+			typeof playlist.mainGenreId === "number"
+				? playlist.mainGenreId
+				: null,
 		createdAt:
 			typeof playlist.createdAt === "string"
 				? playlist.createdAt
@@ -334,7 +339,10 @@ export const StorageService = {
 		return StorageService.getDefaultPlaylist().items;
 	},
 
-	createPlaylist: (name: string): Playlist => {
+	createPlaylist: (
+		name: string,
+		options?: { mainGenreId?: number | null },
+	): Playlist => {
 		const trimmedName = name.trim();
 		if (!trimmedName) {
 			throw new Error("Playlist name is required.");
@@ -345,6 +353,10 @@ export const StorageService = {
 		const playlist: Playlist = {
 			id: `playlist-${crypto.randomUUID()}`,
 			name: trimmedName,
+			mainGenreId:
+				typeof options?.mainGenreId === "number"
+					? options.mainGenreId
+					: null,
 			createdAt: now,
 			updatedAt: now,
 			items: [],
@@ -356,13 +368,20 @@ export const StorageService = {
 
 	updatePlaylist: (
 		playlistId: string,
-		updates: { name?: string },
+		updates: { name?: string; mainGenreId?: number | null },
 	): Playlist | null => {
 		const playlists = StorageService.getPlaylists();
 		let updatedPlaylist: Playlist | null = null;
 
 		const updatedPlaylists = playlists.map((playlist) => {
 			if (playlist.id !== playlistId) return playlist;
+
+			const nextMainGenreId =
+				typeof updates.mainGenreId === "number"
+					? updates.mainGenreId
+					: updates.mainGenreId === null
+						? null
+						: playlist.mainGenreId ?? null;
 
 			updatedPlaylist = {
 				...playlist,
@@ -371,6 +390,7 @@ export const StorageService = {
 						updates.name.trim().length > 0
 						? updates.name.trim()
 						: playlist.name,
+				mainGenreId: nextMainGenreId,
 				updatedAt: new Date().toISOString(),
 			};
 
