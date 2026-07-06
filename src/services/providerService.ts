@@ -6,6 +6,7 @@ export type ProviderConfig = {
     id: ProviderId;
     label: string;
     requiresOriginReferrer: boolean;
+    sandboxAttributes?: string;
 };
 
 export type PlayerUrlInput = {
@@ -32,16 +33,19 @@ export const PROVIDERS: ProviderConfig[] = [
         id: "vidsrc",
         label: "VidSrc (Default)",
         requiresOriginReferrer: true,
+        sandboxAttributes: "allow-scripts allow-same-origin allow-popups allow-forms",
     },
     {
         id: "vidking",
         label: "VidKing",
         requiresOriginReferrer: false,
+        sandboxAttributes: "",
     },
     {
         id: "superembed",
         label: "SuperEmbed",
         requiresOriginReferrer: false,
+        sandboxAttributes: "",
     },
 ];
 

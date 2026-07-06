@@ -328,7 +328,11 @@ export default function MovieViewer() {
 								? "origin"
 								: "strict-origin-when-cross-origin"
 						}
-						sandbox="allow-scripts allow-same-origin allow-presentation"
+						sandbox={
+							getProviderConfig(
+								provider,
+							).sandboxAttributes
+						}
 						allowFullScreen
 						className="viewer-iframe"
 					/>
