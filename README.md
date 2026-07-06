@@ -1,6 +1,10 @@
 # FilmReel
 
-FilmReel is a modern, responsive web application that lets you browse, discover, and watch movies. Built with a sleek Glassmorphism design system (Apple iOS 26 inspired dark theme with purple accents), it offers a premium movie discovery and viewing experience.
+FilmReel is a modern, responsive web application that lets you browse, discover, and watch movies.
+
+> [!NOTE]
+> Ensure that vidsrc domains are not blocked by your ISP or network, as this may prevent video playback.
+> Check the list of domains used by VidSrc at [vidsrc.domains](https://vidsrc.domains/).
 
 ## Features
 
@@ -8,6 +12,8 @@ FilmReel is a modern, responsive web application that lets you browse, discover,
 - **Movie Viewer:** Dive into a movie's details (rating, release date, overview), browse dynamic Top Cast carousels, and watch securely via the integrated embedded players.
 - **About & Transparency Page:** A first-person About page covering FilmReel's mission, privacy-first model, developer background, tech stack, and contribution links.
 - **Multi-Provider Streaming:** Seamlessly switch between streaming sources (VidKing, VidSrc, SuperEmbed) via a sleek Glassmorphic dropdown to ensure uninterrupted playback.
+- **Direct Source Routing:** VidSrc and VidKing now load through direct iframe URLs for faster, more transparent source selection.
+- **VidSrc Server Selector:** When VidSrc is active, you can choose Server 1 (`https://vsembed.ru`) or Server 2 (`https://vsembed.su`), and your choice is remembered across sessions.
 - **Advanced Discovery & Search:** Instantly find content using the live debounced Navbar search autocomplete, or drill down using the Advanced Filter Panel (genre, actor, year, score).
 - **Mood Discovery Survey:** Can't decide what to watch? Take a quick, interactive one-word survey. Your answers determine your current mood, and the app's weighted algorithm suggests movies tailored to how you're feeling.
 - **Account Settings & Watchlist:** Customize your profile locally, save your favorite genres, and manage your curated Watchlist completely offline.

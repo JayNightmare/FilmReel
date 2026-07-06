@@ -1,5 +1,6 @@
 export type ProviderId = "vidsrc" | "vidking" | "superembed";
 export type MediaType = "movie" | "tv";
+export type VidSrcServerOption = "1" | "2";
 
 export type ProviderConfig = {
     id: ProviderId;
@@ -15,6 +16,13 @@ export type PlayerUrlInput = {
     episode?: number;
     lang?: string;
     audio?: "dub" | "sub";
+    vidsrcServerOption?: VidSrcServerOption;
+};
+
+export type VidSrcServerConfig = {
+    id: VidSrcServerOption;
+    label: string;
+    baseUrl: string;
 };
 
 export const DEFAULT_PROVIDER: ProviderId = "vidsrc";
@@ -34,6 +42,19 @@ export const PROVIDERS: ProviderConfig[] = [
         id: "superembed",
         label: "SuperEmbed",
         requiresOriginReferrer: false,
+    },
+];
+
+export const VIDSRC_SERVER_OPTIONS: VidSrcServerConfig[] = [
+    {
+        id: "1",
+        label: "1",
+        baseUrl: "https://vsembed.ru",
+    },
+    {
+        id: "2",
+        label: "2",
+        baseUrl: "https://vsembed.su",
     },
 ];
 
@@ -80,4 +101,49 @@ export function buildApiPlayerUrl(input: PlayerUrlInput): string {
     }
 
     return `/api/player?${params.toString()}`;
+}
+
+export function buildPlayerUrl(input: PlayerUrlInput): string {
+    if (input.provider === "vidsrc") {
+        return buildVidSrcUrl(input);
+    }
+
+    if (input.provider === "vidking") {
+        return buildVidKingUrl(input);
+    }
+
+    return buildApiPlayerUrl(input);
+}
+
+function buildVidSrcUrl(input: PlayerUrlInput): string {
+    const server =
+        VIDSRC_SERVER_OPTIONS.find(
+            (entry) => entry.id === input.vidsrcServerOption,
+        ) ?? VIDSRC_SERVER_OPTIONS[0];
+
+    const params = new URLSearchParams({ tmdb: input.videoId });
+    if (input.mediaType === "tv") {
+        params.set("season", String(input.season ?? 1));
+        params.set("episode", String(input.episode ?? 1));
+        return `${server.baseUrl}/embed/tv?${params.toString()}`;
+    }
+
+    return `${server.baseUrl}/embed/movie?${params.toString()}`;
+}
+
+function buildVidKingUrl(input: PlayerUrlInput): string {
+    const params = new URLSearchParams({
+        color: "ff69b4",
+        autoPlay: "true",
+        nextEpisode: "true",
+        episodeSelector: "true",
+    });
+
+    if (input.mediaType === "tv") {
+        const season = String(input.season ?? 1);
+        const episode = String(input.episode ?? 1);
+        return `https://www.vidking.net/embed/tv/${input.videoId}/${season}/${episode}?${params.toString()}`;
+    }
+
+    return `https://www.vidking.net/embed/movie/${input.videoId}?${params.toString()}`;
 }

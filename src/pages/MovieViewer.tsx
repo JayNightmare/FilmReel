@@ -12,9 +12,11 @@ import { useFeedback } from "../contexts/FeedbackContext";
 import {
 	DEFAULT_PROVIDER,
 	PROVIDERS,
-	buildApiPlayerUrl,
+	VIDSRC_SERVER_OPTIONS,
+	buildPlayerUrl,
 	getProviderConfig,
 	type ProviderId,
+	type VidSrcServerOption,
 } from "../services/providerService";
 import "../styles/MovieViewer.css";
 
@@ -23,6 +25,12 @@ const FALLBACK_POSTER =
 
 const CONTROLS_IDLE_MS = 3000;
 const PLAYLISTS_KEY = "filmreel_custom_playlists";
+const VIDSRC_SERVER_PREFERENCE_KEY = "filmreel_vidsrc_server_option";
+
+const getInitialVidSrcServerOption = (): VidSrcServerOption => {
+	const stored = localStorage.getItem(VIDSRC_SERVER_PREFERENCE_KEY);
+	return stored === "2" ? "2" : "1";
+};
 
 export default function MovieViewer() {
 	const { id } = useParams<{ id: string }>();
@@ -50,6 +58,8 @@ export default function MovieViewer() {
 	// Provider state
 	type AudioTrack = "dub" | "sub";
 	const [provider, setProvider] = useState<ProviderId>(DEFAULT_PROVIDER);
+	const [vidsrcServerOption, setVidsrcServerOption] =
+		useState<VidSrcServerOption>(getInitialVidSrcServerOption);
 	const [audioTrack, setAudioTrack] = useState<AudioTrack>("dub");
 
 	const { openFeedback } = useFeedback();
@@ -106,6 +116,13 @@ export default function MovieViewer() {
 			CONTROLS_IDLE_MS,
 		);
 	}, []);
+
+	useEffect(() => {
+		localStorage.setItem(
+			VIDSRC_SERVER_PREFERENCE_KEY,
+			vidsrcServerOption,
+		);
+	}, [vidsrcServerOption]);
 
 	useEffect(() => {
 		if (!playing) {
@@ -198,12 +215,13 @@ export default function MovieViewer() {
 		const animeAudio = audioTrack === "dub" ? "dub" : "sub";
 		if (!id) return "about:blank";
 
-		return buildApiPlayerUrl({
+		return buildPlayerUrl({
 			provider,
 			videoId: id,
 			mediaType: "movie",
 			lang: isAnime ? animeLanguage : undefined,
 			audio: isAnime ? animeAudio : undefined,
+			vidsrcServerOption,
 		});
 	};
 
@@ -674,6 +692,61 @@ export default function MovieViewer() {
 											),
 										)}
 									</select>
+									{provider ===
+										"vidsrc" && (
+										<>
+											<span
+												className="label-glass viewer-meta-label"
+												style={{
+													marginTop: "10px",
+												}}
+											>
+												VidSrc
+												Server
+											</span>
+											<select
+												className="viewer-provider-select"
+												value={
+													vidsrcServerOption
+												}
+												onChange={(
+													e,
+												) => {
+													setVidsrcServerOption(
+														e
+															.target
+															.value as VidSrcServerOption,
+													);
+													if (
+														playing
+													) {
+														refreshIframe();
+													}
+												}}
+												title="Select VidSrc Server"
+											>
+												{VIDSRC_SERVER_OPTIONS.map(
+													(
+														entry,
+													) => (
+														<option
+															key={
+																entry.id
+															}
+															value={
+																entry.id
+															}
+														>
+															Server{" "}
+															{
+																entry.label
+															}
+														</option>
+													),
+												)}
+											</select>
+										</>
+									)}
 									{isAnime && (
 										<>
 											<span

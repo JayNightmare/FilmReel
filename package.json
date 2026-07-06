@@ -1,7 +1,7 @@
 {
 	"name": "film-reel",
 	"private": true,
-	"version": "0.0.11",
+	"version": "0.0.12",
 	"type": "module",
 	"description": "Discover movies and TV shows tailored to your mood",
 	"author": {

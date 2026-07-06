@@ -6,7 +6,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-- Feature: Replaced VidKing and VidSrc streaming providers with SuperEmbed (using advanced `se_player.php` method).
+- Feature: Switched VidSrc and VidKing playback to direct iframe URL routing in Movie and TV viewers.
+- Feature: Added VidSrc server options (Server 1/2) with domain switching support in both viewers.
+- UX: Persisted the selected VidSrc server option in localStorage so server preference is restored across sessions.
+- Docs: Updated README with direct source routing details and VidSrc server selection behavior.
 - Feature: Updated Search Results page to simultaneously query and interleave Movies and TV Shows.
 - Feature: Added Film/TV badge to `MovieCard` components.
 - Feature: Episode-level watched tracking for TV series.

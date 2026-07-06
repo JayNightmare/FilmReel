@@ -10,9 +10,11 @@ import { useFeedback } from "../contexts/FeedbackContext";
 import {
 	DEFAULT_PROVIDER,
 	PROVIDERS,
-	buildApiPlayerUrl,
+	VIDSRC_SERVER_OPTIONS,
+	buildPlayerUrl,
 	getProviderConfig,
 	type ProviderId,
+	type VidSrcServerOption,
 } from "../services/providerService";
 import "../styles/TVViewer.css";
 
@@ -21,6 +23,12 @@ type AudioTrack = "dub" | "sub";
 const FALLBACK_POSTER =
 	"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 500 750' fill='none'%3E%3Crect width='500' height='750' fill='%231a1122'/%3E%3Ctext x='250' y='340' text-anchor='middle' fill='%237f13ec' font-family='system-ui' font-size='40' font-weight='bold'%3EFilmReel%3C/text%3E%3Ctext x='250' y='400' text-anchor='middle' fill='%23666' font-family='system-ui' font-size='20'%3ENo Poster%3C/text%3E%3C/svg%3E";
 const PLAYLISTS_KEY = "filmreel_custom_playlists";
+const VIDSRC_SERVER_PREFERENCE_KEY = "filmreel_vidsrc_server_option";
+
+const getInitialVidSrcServerOption = (): VidSrcServerOption => {
+	const stored = localStorage.getItem(VIDSRC_SERVER_PREFERENCE_KEY);
+	return stored === "2" ? "2" : "1";
+};
 
 const TVViewer = () => {
 	const { id } = useParams<{ id: string }>();
@@ -38,6 +46,8 @@ const TVViewer = () => {
 	);
 	const [playing, setPlaying] = useState(false);
 	const [provider, setProvider] = useState<ProviderId>(DEFAULT_PROVIDER);
+	const [vidsrcServerOption, setVidsrcServerOption] =
+		useState<VidSrcServerOption>(getInitialVidSrcServerOption);
 	const [audioTrack, setAudioTrack] = useState<AudioTrack>("dub");
 	const [cast, setCast] = useState<CastMember[]>([]);
 	const [similar, setSimilar] = useState<TVShow[]>([]);
@@ -50,6 +60,13 @@ const TVViewer = () => {
 		PLAYLISTS_KEY,
 		StorageService.getPlaylists,
 	);
+
+	useEffect(() => {
+		localStorage.setItem(
+			VIDSRC_SERVER_PREFERENCE_KEY,
+			vidsrcServerOption,
+		);
+	}, [vidsrcServerOption]);
 
 	useEffect(() => {
 		if (!id) return;
@@ -151,7 +168,7 @@ const TVViewer = () => {
 		const animeAudio = audioTrack === "dub" ? "dub" : "sub";
 		if (!id) return "about:blank";
 
-		return buildApiPlayerUrl({
+		return buildPlayerUrl({
 			provider,
 			videoId: id,
 			mediaType: "tv",
@@ -159,6 +176,7 @@ const TVViewer = () => {
 			episode: e,
 			lang: isAnime ? animeLanguage : undefined,
 			audio: isAnime ? animeAudio : undefined,
+			vidsrcServerOption,
 		});
 	};
 
@@ -686,6 +704,61 @@ const TVViewer = () => {
 											),
 										)}
 									</select>
+									{provider ===
+										"vidsrc" && (
+										<>
+											<span
+												className="label-glass tv-meta-label"
+												style={{
+													marginTop: "10px",
+												}}
+											>
+												VidSrc
+												Server
+											</span>
+											<select
+												className="tv-provider-select"
+												value={
+													vidsrcServerOption
+												}
+												onChange={(
+													e,
+												) => {
+													setVidsrcServerOption(
+														e
+															.target
+															.value as VidSrcServerOption,
+													);
+													if (
+														playing
+													) {
+														refreshIframe();
+													}
+												}}
+												title="Select VidSrc Server"
+											>
+												{VIDSRC_SERVER_OPTIONS.map(
+													(
+														entry,
+													) => (
+														<option
+															key={
+																entry.id
+															}
+															value={
+																entry.id
+															}
+														>
+															Server{" "}
+															{
+																entry.label
+															}
+														</option>
+													),
+												)}
+											</select>
+										</>
+									)}
 									{isAnime && (
 										<>
 											<span
