@@ -37,6 +37,7 @@ export default function MovieViewer() {
 	const navigate = useNavigate();
 	const heroRef = useRef<HTMLDivElement>(null);
 	const idleTimerRef = useRef<ReturnType<typeof setTimeout>>(null);
+	const quickTicketTimerRef = useRef<ReturnType<typeof setTimeout>>(null);
 
 	const [movie, setMovie] = useState<Movie | null>(null);
 	const [similar, setSimilar] = useState<Movie[]>([]);
@@ -61,8 +62,19 @@ export default function MovieViewer() {
 	const [vidsrcServerOption, setVidsrcServerOption] =
 		useState<VidSrcServerOption>(getInitialVidSrcServerOption);
 	const [audioTrack, setAudioTrack] = useState<AudioTrack>("dub");
+	type QuickTicketStatus = "idle" | "sending" | "sent" | "error";
+	const [quickTicketStatus, setQuickTicketStatus] =
+		useState<QuickTicketStatus>("idle");
 
 	const { openFeedback, submitQuickPlaybackTicket } = useFeedback();
+
+	useEffect(() => {
+		return () => {
+			if (quickTicketTimerRef.current) {
+				clearTimeout(quickTicketTimerRef.current);
+			}
+		};
+	}, []);
 
 	const refreshIframe = useCallback(() => {
 		setIframeKey((k) => k + 1);
@@ -227,6 +239,37 @@ export default function MovieViewer() {
 
 	const activeProviderConfig = getProviderConfig(provider);
 
+	const handleQuickPlaybackReport = async (
+		e: React.MouseEvent<HTMLButtonElement>,
+	) => {
+		e.stopPropagation();
+		if (quickTicketStatus === "sending") return;
+
+		setQuickTicketStatus("sending");
+		const submitted = await submitQuickPlaybackTicket(
+			movie.title,
+			"movie",
+		);
+
+		if (quickTicketTimerRef.current) {
+			clearTimeout(quickTicketTimerRef.current);
+		}
+
+		if (submitted) {
+			setQuickTicketStatus("sent");
+			quickTicketTimerRef.current = setTimeout(() => {
+				setQuickTicketStatus("idle");
+			}, 2200);
+			return;
+		}
+
+		setQuickTicketStatus("error");
+		quickTicketTimerRef.current = setTimeout(() => {
+			setQuickTicketStatus("idle");
+		}, 2800);
+		openFeedback(movie.title);
+	};
+
 	// Full control bar for the overlay (pre-play, decorative)
 	const renderOverlayControls = () => (
 		<div
@@ -244,22 +287,24 @@ export default function MovieViewer() {
 				>
 					<button
 						type="button"
-						className="player-mood-btn"
-						onClick={async (e) => {
-							e.stopPropagation();
-							const submitted =
-								await submitQuickPlaybackTicket(
-									movie.title,
-									"movie",
-								);
-							if (!submitted) {
-								openFeedback(
-									movie.title,
-								);
-							}
-						}}
+						className={`player-mood-btn player-mood-btn-${quickTicketStatus}`}
+						onClick={
+							handleQuickPlaybackReport
+						}
+						disabled={
+							quickTicketStatus ===
+							"sending"
+						}
 					>
-						Report playback issue
+						{quickTicketStatus === "sending"
+							? "Sending report..."
+							: quickTicketStatus ===
+								  "sent"
+								? "Report sent"
+								: quickTicketStatus ===
+									  "error"
+									? "Send failed - form opened"
+									: "Report playback issue"}
 					</button>
 				</div>
 			</div>

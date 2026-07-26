@@ -53,13 +53,25 @@ const TVViewer = () => {
 	const [similar, setSimilar] = useState<TVShow[]>([]);
 	const [showPlaylistPicker, setShowPlaylistPicker] = useState(false);
 	const { openFeedback, submitQuickPlaybackTicket } = useFeedback();
+	type QuickTicketStatus = "idle" | "sending" | "sent" | "error";
+	const [quickTicketStatus, setQuickTicketStatus] =
+		useState<QuickTicketStatus>("idle");
 	const [iframeKey, setIframeKey] = useState(0);
 	const [loading, setLoading] = useState(true);
 	const iframeContainerRef = useRef<HTMLDivElement>(null);
+	const quickTicketTimerRef = useRef<ReturnType<typeof setTimeout>>(null);
 	const playlists = useStorageSync(
 		PLAYLISTS_KEY,
 		StorageService.getPlaylists,
 	);
+
+	useEffect(() => {
+		return () => {
+			if (quickTicketTimerRef.current) {
+				clearTimeout(quickTicketTimerRef.current);
+			}
+		};
+	}, []);
 
 	useEffect(() => {
 		localStorage.setItem(
@@ -149,11 +161,31 @@ const TVViewer = () => {
 	const refreshIframe = () => setIframeKey((k) => k + 1);
 
 	const submitIssueForCurrentShow = async () => {
+		if (quickTicketStatus === "sending") return;
+		setQuickTicketStatus("sending");
 		const submitted = await submitQuickPlaybackTicket(
 			show?.name,
 			"tv",
 		);
-		if (!submitted && show?.name) {
+
+		if (quickTicketTimerRef.current) {
+			clearTimeout(quickTicketTimerRef.current);
+		}
+
+		if (submitted) {
+			setQuickTicketStatus("sent");
+			quickTicketTimerRef.current = setTimeout(() => {
+				setQuickTicketStatus("idle");
+			}, 2200);
+			return;
+		}
+
+		setQuickTicketStatus("error");
+		quickTicketTimerRef.current = setTimeout(() => {
+			setQuickTicketStatus("idle");
+		}, 2800);
+
+		if (show?.name) {
 			openFeedback(show.name);
 		}
 	};
@@ -544,16 +576,29 @@ const TVViewer = () => {
 								Refresh
 							</button>
 							<button
-								className="tv-action-btn"
+								className={`tv-action-btn tv-action-btn-${quickTicketStatus}`}
 								onClick={
 									submitIssueForCurrentShow
+								}
+								disabled={
+									quickTicketStatus ===
+									"sending"
 								}
 								title="Submit Feedback"
 							>
 								<span className="material-symbols-outlined">
 									feedback
 								</span>
-								Feedback
+								{quickTicketStatus ===
+								"sending"
+									? "Sending..."
+									: quickTicketStatus ===
+										  "sent"
+										? "Sent"
+										: quickTicketStatus ===
+											  "error"
+											? "Failed"
+											: "Feedback"}
 							</button>
 						</div>
 
