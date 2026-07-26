@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 import { useFeedback } from "../contexts/FeedbackContext";
 import type { InstallPromptOutcome } from "../hooks/useInstallPrompt";
 import { ToastNotif } from "./ToastNotif";

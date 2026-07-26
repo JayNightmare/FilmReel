@@ -4,7 +4,7 @@ import {
 	useEffect,
 	useRef,
 } from "react";
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 import { APIService } from "../services/api";
 import type { Movie, TVShow } from "../services/api";
 import { StorageService } from "../services/storage";

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 import type { Movie, TVShow } from "../services/api";
 import { GenreMap } from "../services/genreMap";
 import { StorageService } from "../services/storage";

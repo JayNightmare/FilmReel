@@ -1,6 +1,6 @@
 import { useEffect } from "react";
-import { Link } from "react-router-dom";
-import { useLocation } from "react-router-dom";
+import { Link } from "react-router";
+import { useLocation } from "react-router";
 import { useFeedback } from "../contexts/FeedbackContext";
 import "../styles/About.css";
 

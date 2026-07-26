@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useParams, Link, useSearchParams } from "react-router-dom";
+import { useParams, Link, useSearchParams } from "react-router";
 import { APIService } from "../services/api";
 import type { TVShow, Season, Episode, CastMember } from "../services/api";
 import { StorageService } from "../services/storage";
@@ -52,7 +52,7 @@ const TVViewer = () => {
 	const [cast, setCast] = useState<CastMember[]>([]);
 	const [similar, setSimilar] = useState<TVShow[]>([]);
 	const [showPlaylistPicker, setShowPlaylistPicker] = useState(false);
-	const { openFeedback } = useFeedback();
+	const { openFeedback, submitQuickPlaybackTicket } = useFeedback();
 	const [iframeKey, setIframeKey] = useState(0);
 	const [loading, setLoading] = useState(true);
 	const iframeContainerRef = useRef<HTMLDivElement>(null);
@@ -147,6 +147,16 @@ const TVViewer = () => {
 	}, [id, selectedSeason, autoEpisode, autoSeason]);
 
 	const refreshIframe = () => setIframeKey((k) => k + 1);
+
+	const submitIssueForCurrentShow = async () => {
+		const submitted = await submitQuickPlaybackTicket(
+			show?.name,
+			"tv",
+		);
+		if (!submitted && show?.name) {
+			openFeedback(show.name);
+		}
+	};
 
 	const toggleWatchlist = () => {
 		if (!show) return;
@@ -535,10 +545,8 @@ const TVViewer = () => {
 							</button>
 							<button
 								className="tv-action-btn"
-								onClick={() =>
-									openFeedback(
-										show.name,
-									)
+								onClick={
+									submitIssueForCurrentShow
 								}
 								title="Submit Feedback"
 							>

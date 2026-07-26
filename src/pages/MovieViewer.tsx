@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router";
 import { APIService } from "../services/api";
 import type { Movie, CastMember, VideoResult } from "../services/api";
 import { GenreMap } from "../services/genreMap";
@@ -62,7 +62,7 @@ export default function MovieViewer() {
 		useState<VidSrcServerOption>(getInitialVidSrcServerOption);
 	const [audioTrack, setAudioTrack] = useState<AudioTrack>("dub");
 
-	const { openFeedback } = useFeedback();
+	const { openFeedback, submitQuickPlaybackTicket } = useFeedback();
 
 	const refreshIframe = useCallback(() => {
 		setIframeKey((k) => k + 1);
@@ -245,15 +245,21 @@ export default function MovieViewer() {
 					<button
 						type="button"
 						className="player-mood-btn"
-						onClick={(e) => {
+						onClick={async (e) => {
 							e.stopPropagation();
-							navigate("/mood");
+							const submitted =
+								await submitQuickPlaybackTicket(
+									movie.title,
+									"movie",
+								);
+							if (!submitted) {
+								openFeedback(
+									movie.title,
+								);
+							}
 						}}
 					>
-						<span className="material-symbols-outlined">
-							auto_awesome
-						</span>
-						Mood Mode
+						Report playback issue
 					</button>
 				</div>
 			</div>

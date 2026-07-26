@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 import { APIService } from "../services/api";
 import type { Movie, TVShow, Genre } from "../services/api";
 import { MovieCard } from "./MovieCard";

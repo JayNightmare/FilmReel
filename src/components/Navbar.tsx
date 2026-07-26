@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router";
 import { StorageService } from "../services/storage";
 import type { UserProfile } from "../services/storage";
 import { APIService } from "../services/api";
