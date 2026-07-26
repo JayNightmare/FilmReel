@@ -600,6 +600,32 @@ const TVViewer = () => {
 											? "Failed"
 											: "Feedback"}
 							</button>
+							{quickTicketStatus !==
+								"idle" && (
+								<div
+									className={`tv-ticket-feedback tv-ticket-feedback-${quickTicketStatus}`}
+									aria-live="polite"
+								>
+									<span className="material-symbols-outlined tv-ticket-feedback-icon">
+										{quickTicketStatus ===
+										"sending"
+											? "hourglass_top"
+											: quickTicketStatus ===
+												  "sent"
+												? "check_circle"
+												: "error"}
+									</span>
+									<span>
+										{quickTicketStatus ===
+										"sending"
+											? "Sending your report..."
+											: quickTicketStatus ===
+												  "sent"
+												? "It worked. Your report was sent."
+												: "Could not auto-send. Feedback form opened."}
+									</span>
+								</div>
+							)}
 						</div>
 
 						{/* Cast */}

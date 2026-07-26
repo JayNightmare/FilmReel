@@ -306,6 +306,31 @@ export default function MovieViewer() {
 									? "Send failed - form opened"
 									: "Report playback issue"}
 					</button>
+					{quickTicketStatus !== "idle" && (
+						<div
+							className={`player-ticket-feedback player-ticket-feedback-${quickTicketStatus}`}
+							aria-live="polite"
+						>
+							<span className="material-symbols-outlined player-ticket-feedback-icon">
+								{quickTicketStatus ===
+								"sending"
+									? "hourglass_top"
+									: quickTicketStatus ===
+										  "sent"
+										? "check_circle"
+										: "error"}
+							</span>
+							<span>
+								{quickTicketStatus ===
+								"sending"
+									? "Sending your report..."
+									: quickTicketStatus ===
+										  "sent"
+										? "It worked. Your report was sent."
+										: "Could not auto-send. Feedback form opened."}
+							</span>
+						</div>
+					)}
 				</div>
 			</div>
 		</div>
