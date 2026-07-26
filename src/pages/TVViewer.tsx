@@ -335,6 +335,9 @@ const TVViewer = () => {
 						key={iframeKey}
 						src={buildEmbedUrl()}
 						title={show.name}
+						allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+						allowFullScreen
+						loading="eager"
 						referrerPolicy={
 							activeProviderConfig.requiresOriginReferrer
 								? "origin"
@@ -344,7 +347,6 @@ const TVViewer = () => {
 							activeProviderConfig.sandboxAttributes ||
 							undefined
 						}
-						allowFullScreen
 						className="tv-iframe"
 					/>
 				)}

@@ -5,9 +5,10 @@
 /* --- Hero container --- */
 .viewer-hero {
     position: relative;
-    width: 100vw;
-    height: calc(100vh - 72px);
-    margin-left: calc(-50vw + 50%);
+    width: 100%;
+    height: calc(100vh - 80px);
+    height: calc(100dvh - 80px);
+    margin-left: 0;
     margin-top: -32px;
     background: #000;
     overflow: hidden;
@@ -674,7 +675,7 @@
     }
 
     .player-mood-btn {
-        display: none;
+        /* display: none; */
     }
 
     .player-separator {

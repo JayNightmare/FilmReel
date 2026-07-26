@@ -33,7 +33,9 @@ export const PROVIDERS: ProviderConfig[] = [
         id: "vidsrc",
         label: "VidSrc (Default)",
         requiresOriginReferrer: true,
-        sandboxAttributes: "allow-scripts allow-same-origin allow-popups allow-forms",
+        // VidSrc embeds can stall on mobile under stricter sandboxing.
+        // Keep this unset so the browser can run the provider player normally.
+        sandboxAttributes: undefined,
     },
     {
         id: "vidking",

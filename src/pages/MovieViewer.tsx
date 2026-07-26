@@ -399,6 +399,9 @@ export default function MovieViewer() {
 						key={iframeKey}
 						src={buildEmbedUrl()}
 						title={movie.title}
+						allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+						allowFullScreen
+						loading="eager"
 						referrerPolicy={
 							activeProviderConfig.requiresOriginReferrer
 								? "origin"
@@ -408,7 +411,6 @@ export default function MovieViewer() {
 							activeProviderConfig.sandboxAttributes ||
 							undefined
 						}
-						allowFullScreen
 						className="viewer-iframe"
 					/>
 				) : (
