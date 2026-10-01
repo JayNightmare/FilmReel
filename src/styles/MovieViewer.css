@@ -141,6 +141,10 @@
     height: 36px;
 }
 
+.player-top-right .cast-help-button-label {
+    display: none;
+}
+
 .player-icon-sm {
     font-size: 20px;
 }
