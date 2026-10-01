@@ -695,7 +695,23 @@
     }
 
     .player-top-right {
+        top: 88px;
+        right: 12px;
+    }
+
+    .player-top-right > button:not(:first-child) {
         display: none;
+    }
+
+    .player-top-right .player-icon-btn {
+        width: auto;
+        padding: 0 12px;
+        border-radius: 9999px;
+        gap: 6px;
+    }
+
+    .player-top-right .cast-help-button-label {
+        display: inline;
     }
 
     .viewer-mobile-actions {

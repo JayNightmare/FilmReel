@@ -293,6 +293,9 @@ const TVViewer = () => {
 				className="tv-player-wrapper"
 				ref={iframeContainerRef}
 			>
+				<div className="tv-player-cast-help">
+					<CastHelp className="tv-action-btn" />
+				</div>
 				{backdropUrl && !playing && (
 					<img
 						src={backdropUrl}
@@ -360,10 +363,6 @@ const TVViewer = () => {
 						<h1 className="tv-title">
 							{show.name}
 						</h1>
-						<div className="tv-cast-help">
-							<CastHelp className="tv-action-btn" />
-						</div>
-
 						{/* Mobile action row */}
 						<div className="tv-mobile-actions">
 							<button
