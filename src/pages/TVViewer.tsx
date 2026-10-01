@@ -6,6 +6,7 @@ import { StorageService } from "../services/storage";
 import { useStorageSync } from "../hooks/useStorageSync";
 import { MovieCard } from "../components/MovieCard";
 import { PlaylistPickerModal } from "../components/PlaylistPickerModal";
+import { CastHelp } from "../components/CastHelp";
 import { useFeedback } from "../contexts/FeedbackContext";
 import {
 	DEFAULT_PROVIDER,
@@ -292,6 +293,9 @@ const TVViewer = () => {
 				className="tv-player-wrapper"
 				ref={iframeContainerRef}
 			>
+				<div className="tv-player-cast-help">
+					<CastHelp className="tv-action-btn" />
+				</div>
 				{backdropUrl && !playing && (
 					<img
 						src={backdropUrl}
@@ -359,7 +363,6 @@ const TVViewer = () => {
 						<h1 className="tv-title">
 							{show.name}
 						</h1>
-
 						{/* Mobile action row */}
 						<div className="tv-mobile-actions">
 							<button
