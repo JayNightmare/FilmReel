@@ -8,6 +8,7 @@ import { useStorageSync } from "../hooks/useStorageSync";
 import { MovieCard } from "../components/MovieCard";
 import { PlaylistPickerModal } from "../components/PlaylistPickerModal";
 import { TrailerModal } from "../components/TrailerModal";
+import { CastHelp } from "../components/CastHelp";
 import { useFeedback } from "../contexts/FeedbackContext";
 import {
 	DEFAULT_PROVIDER,
@@ -370,6 +371,7 @@ export default function MovieViewer() {
 
 				{/* Top-right: Actions */}
 				<div className="player-top-right">
+					<CastHelp className="player-icon-btn" />
 					<button
 						className="player-icon-btn"
 						onClick={(e) => {

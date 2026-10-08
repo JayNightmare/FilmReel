@@ -1,0 +1,68 @@
+.cast-help-button-label {
+	font-size: 0.85rem;
+}
+
+.cast-help-dialog {
+	width: min(540px, calc(100% - 32px));
+	max-height: min(80dvh, 700px);
+	margin: auto;
+	padding: 0;
+	overflow: auto;
+	border: 1px solid rgba(255, 255, 255, 0.2);
+	border-radius: 16px;
+	background: #20172b;
+	color: white;
+	box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
+}
+
+.cast-help-dialog::backdrop {
+	background: rgba(0, 0, 0, 0.75);
+}
+
+.cast-help-content {
+	padding: 24px;
+}
+
+.cast-help-header {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 16px;
+}
+
+.cast-help-header h2 {
+	font-size: 1.4rem;
+}
+
+.cast-help-close {
+	display: grid;
+	place-items: center;
+	flex: none;
+	width: 36px;
+	height: 36px;
+	border: 0;
+	border-radius: 50%;
+	background: rgba(255, 255, 255, 0.1);
+	color: white;
+	cursor: pointer;
+}
+
+.cast-help-content h3 {
+	margin-top: 20px;
+	font-size: 1.05rem;
+}
+
+.cast-help-content p,
+.cast-help-content ol {
+	margin-top: 12px;
+	line-height: 1.6;
+	color: rgba(255, 255, 255, 0.85);
+}
+
+.cast-help-content ol {
+	padding-left: 24px;
+}
+
+.cast-help-content li + li {
+	margin-top: 8px;
+}
