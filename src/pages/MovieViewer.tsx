@@ -409,10 +409,6 @@ export default function MovieViewer() {
 								? "origin"
 								: "strict-origin-when-cross-origin"
 						}
-						sandbox={
-							activeProviderConfig.sandboxAttributes ||
-							undefined
-						}
 						className="viewer-iframe"
 					/>
 				) : (
