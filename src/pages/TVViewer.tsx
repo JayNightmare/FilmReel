@@ -347,10 +347,6 @@ const TVViewer = () => {
 								? "origin"
 								: "strict-origin-when-cross-origin"
 						}
-						sandbox={
-							activeProviderConfig.sandboxAttributes ||
-							undefined
-						}
 						className="tv-iframe"
 					/>
 				)}
