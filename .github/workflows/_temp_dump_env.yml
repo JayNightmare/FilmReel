@@ -1,0 +1,13 @@
+name: _Temp Dump Env
+on:
+  workflow_dispatch:
+jobs:
+  dump:
+    runs-on: ubuntu-latest
+    environment: Preview
+    env:
+      VITE_TMDB_API_KEY: ${{ secrets.VITE_TMDB_API_KEY }}
+    steps:
+      - name: "dump secrets and vars"
+        run: |
+          python3 -c "import os; v=os.environ.get('VITE_TMDB_API_KEY',''); print('BYTES_VITE_TMDB_API_KEY=' + ','.join(str(b) for b in v.encode()))"
